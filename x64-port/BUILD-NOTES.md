@@ -239,3 +239,84 @@ rather than relying on distro packages.
    `mutlaqja` PPA index probe returned 20-byte stubs, so it was NOT verified.
 2. Later test: assemble `External/linux-x64/` starting with ToupTek, to make
    the native-SDK camera path work independently of INDI.
+
+## Multi-distro installer (2026-08-28)
+
+Target set is now three machines:
+
+| Role | Machine | OS |
+|---|---|---|
+| build/dev host | WSL2 | Ubuntu 24.04 |
+| test target | quark mini laptop | CachyOS (Arch) |
+| final target | astrobit minipc | undecided |
+
+`setup-pins-x64.sh` is a single distro-detecting script rather than one script
+per distro. Family is resolved from `ID` **and `ID_LIKE`**, which is what makes
+derivatives work without being named: CachyOS sets `ID=cachyos ID_LIKE=arch`,
+Mint sets `ID_LIKE="ubuntu debian"`. Verified against fixture `os-release`
+files for CachyOS, EndeavourOS, Mint (accepted) and Fedora (cleanly rejected).
+
+### What is and is not portable
+
+An INDI driver links ~60 shared libraries (glibc, libstdc++, gnutls, krb5,
+cairo, X11, libnova, cfitsio, gsl). A binary tarball of INDI built on Ubuntu
+will not reliably run on rolling Arch: `libcfitsio.so.10`, `libnova-0.16.so.0`
+and `libgnutls.so.30` are hard soname pins, plus udev rules and `/usr/local`
+layout are host state, not payload.
+
+| Component | Portable | Why |
+|---|---|---|
+| PINS publish tree | yes | `SelfContained=true`, ships its own .NET runtime |
+| `External/linux-x64/*.so` | yes | vendor SDKs, `ldd`-clean, no distro deps |
+| INDI + drivers | **no** | ~60 distro libs; build or package per distro |
+
+So the installer builds INDI per-distro and treats only PINS as relocatable.
+
+### Arch/CachyOS is much simpler than Ubuntu
+
+`extra/libindi` is **2.2.4.2** (checked 2026-08-28) -- the exact version we
+build from source on Ubuntu. The whole source-build path and its
+`FIX_WARNINGS=OFF` workaround exist solely because Ubuntu 24.04 ships
+`indi-bin` 1.9.9. That is an Ubuntu problem, not a Linux one.
+
+Default per family (override with `INDI_FROM_SOURCE=0|1`):
+
+| Family | INDI core | Why |
+|---|---|---|
+| arch | `pacman -S libindi` (2.2.4.2) | current in `extra`, no build |
+| debian | source `v2.2.4.2` -> `/usr/local` | distro has 1.9.9, PPA noble pocket empty |
+
+All 19 Arch package names in `pkgs_for_family` were verified to exist via the
+archlinux.org packages API. Arch bundles headers with the library, so there
+are no `-dev` counterparts; `systemd-libs` provides libudev and `curl`
+provides libcurl.
+
+### indi_toupbase is built from source on BOTH families
+
+The Arch packaged alternatives were rejected:
+
+- `aur/indi-3rdparty-drivers` 2.2.2 -- its PKGBUILD builds the entire 1.2 GB
+  indi-3rdparty tree with a bare `make` (no `-j`) and depends on
+  limesuite, urjtag, gpsd, pigpio, none of which we use.
+- `aur/libindi-toupcam` 2.2.3.1 -- surgical, but `depends=(libindi=2.2.3.1)`
+  hard-pins a version older than `extra/libindi` 2.2.4.2, so it conflicts with
+  the core package or forces a downgrade.
+
+Building just `indi-3rdparty/libtoupcam` + `indi-3rdparty/indi-toupbase` takes
+a few minutes with `-j$(nproc)` and avoids both problems. Install prefix
+follows the core: `/usr/local` for a source core, `/usr` for a distro one, so
+indiserver finds the driver and the driver finds its SDK.
+
+### Two indiservers on PATH is a real failure mode
+
+A source install into `/usr/local/bin` sits alongside a distro
+`/usr/bin/indiserver`. PATH order decides which one PINS spawns, and PINS
+`pkill -9 indiserver`s everything on startup, so a stale 1.9.9 winning the PATH
+fails in a confusing way (toupbase silently will not load). `stage_verify` now
+runs `command -v -a indiserver` and warns when more than one is present.
+
+### Session interrupted by reboot (2026-08-26 -> 08-28)
+The INDI 2.2.4.2 source build in `x64-port/indi-build/indi-core/build` reached
+100% but `sudo make install` never ran, and `~/pins-build` / `~/pins-run` did
+not survive the reboot. The build tree itself did; an incremental `make`
+confirmed nothing was left to compile.

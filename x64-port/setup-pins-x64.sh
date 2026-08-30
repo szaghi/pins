@@ -452,6 +452,21 @@ stage_pins() {
 # plugin gets its own subfolder containing its full dependency set. That is why
 # the whole bin directory is copied rather than just the plugin assembly, and
 # why doing so cannot clobber PINS's own assemblies.
+# The plugin directory is keyed on PluginMinimumApplicationVersion, NOT on the
+# application version. NINA.Plugin sets no such assembly metadata, so
+# Constants.cs:38 falls back to "3.0.0" and stays there regardless of PINS
+# being 3.3.0.1053. Deriving it from AssemblyVersion puts plugins in a folder
+# PINS never scans, which fails silently: the app starts, the plugins are
+# simply absent, and any copy installed from the official plugin repository
+# wins instead.
+plugin_folder() {
+    local ver=3.0.0 meta
+    meta=$(grep -oP 'PluginMinimumApplicationVersion[^0-9]*\K[0-9]+\.[0-9]+\.[0-9]+' \
+               "$PINS_SRC/NINA.Plugin/NINA.Plugin.csproj" 2>/dev/null | head -1)
+    [[ -n "$meta" ]] && ver="$meta"
+    printf '%s/NINA/Plugins/%s' "${XDG_DATA_HOME:-$HOME/.local/share}" "$ver"
+}
+
 stage_plugins() {
     log "Stage: PINS plugins (ninaAPI + Touch-N-Stars)"
 
@@ -465,18 +480,18 @@ stage_plugins() {
     # that NINA.Plugin was compiled with (Constants.cs:26, UserExtensionsFolder).
     # LocalApplicationData is ~/.local/share on Linux, giving
     # ~/.local/share/NINA/Plugins/<major.minor.build>/.
-    local ver
-    ver=$(grep -oP 'AssemblyVersion\("\K[0-9]+\.[0-9]+\.[0-9]+' \
-              "$PINS_SRC/CommonAssemblyInfo.cs" 2>/dev/null | head -1)
-    [[ -n "$ver" ]] || die "could not read AssemblyVersion from CommonAssemblyInfo.cs"
-
-    local plugin_root="${XDG_DATA_HOME:-$HOME/.local/share}/NINA/Plugins/$ver"
+    local plugin_root
+    plugin_root="$(plugin_folder)"
     info "plugin folder: $plugin_root"
     mkdir -p "$plugin_root"
 
     local built=0 name proj out
-    for spec in "ninaAPI:NINA.Plugins/ninaAPI/ninaAPI/ninaAPI.csproj" \
-                "Touch-N-Stars:NINA.Plugins/Touch-N-Stars/Touch-N-Stars/Touch-N-Stars.csproj"; do
+    # The destination folder name must match the plugin's display Name, because
+    # that is the folder the official plugin repository installs into and the
+    # one a previously-downloaded copy already occupies. Deploying beside it
+    # under a different name leaves two copies, and the downloaded one wins.
+    for spec in "Advanced API:NINA.Plugins/ninaAPI/ninaAPI/ninaAPI.csproj" \
+                "Touch N Stars:NINA.Plugins/Touch-N-Stars/Touch-N-Stars/Touch-N-Stars.csproj"; do
         name=${spec%%:*}
         proj=${spec#*:}
 
@@ -525,7 +540,10 @@ stage_plugins() {
 deploy_webapp() {
     local plugin_root="$1"
     local src="$PINS_SRC/Touch-N-Stars"       # the Vue submodule, not the plugin
-    local dest="$plugin_root/Touch-N-Stars/app"
+    # "Touch N Stars" with spaces: the plugin's display Name, which is both the
+    # folder the official repository installs into and where the assembly
+    # resolves its own directory from at runtime.
+    local dest="$plugin_root/Touch N Stars/app"
 
     if [[ ! -f "$src/package.json" ]]; then
         warn "Touch-N-Stars web app sources not found at $src; submodule not checked out?"
@@ -703,33 +721,25 @@ stage_verify() {
     # -- plugins -----------------------------------------------------------
     # Without ninaAPI there is no HTTP server and therefore no user interface,
     # which is easy to miss because PINS itself starts and runs perfectly.
-    local ver plugin_root
-    ver=$(grep -oP 'AssemblyVersion\("\K[0-9]+\.[0-9]+\.[0-9]+' \
-              "$PINS_SRC/CommonAssemblyInfo.cs" 2>/dev/null | head -1)
-    if [[ -n "$ver" ]]; then
-        plugin_root="${XDG_DATA_HOME:-$HOME/.local/share}/NINA/Plugins/$ver"
-        if [[ -f "$plugin_root/ninaAPI/ninaAPI.dll" ]]; then
-            info "ninaAPI plugin: $plugin_root/ninaAPI/"
-        else
-            warn "ninaAPI plugin missing from $plugin_root; PINS will have no API and no UI"
-            warn "run the 'plugins' stage"; rc=1
-        fi
-        # The folder is Touch-N-Stars but the assembly is TouchNStars
-        # (AssemblyName in its csproj), so match on any dll rather than a
-        # hardcoded name that would drift if upstream renames it.
-        [[ -n $(find "$plugin_root/Touch-N-Stars" -maxdepth 1 -name 'TouchNStars*.dll' -o \
-                     -maxdepth 1 -name 'Touch-N-Stars*.dll' 2>/dev/null | head -1) ]] \
-            && info "Touch-N-Stars plugin: present" \
-            || warn "Touch-N-Stars plugin missing from $plugin_root"
-
-        # The plugin is only the server; the browser UI is a separate Vue
-        # build. Without it EmbedIO answers with a 404 that reads like a
-        # routing bug rather than a missing frontend.
-        [[ -f "$plugin_root/Touch-N-Stars/app/index.html" ]] \
-            && info "Touch-N-Stars web UI: present" \
-            || warn "Touch-N-Stars web UI missing: the browser will 404 on / (run the plugins stage)"
+    local plugin_root
+    plugin_root="$(plugin_folder)"
+    if [[ -f "$plugin_root/Advanced API/ninaAPI.dll" ]]; then
+        info "ninaAPI plugin: $plugin_root/Advanced API/"
     else
-        warn "cannot determine plugin folder version (no PINS source at $PINS_SRC)"
+        warn "ninaAPI plugin missing from $plugin_root; PINS will have no API and no UI"
+        warn "run the 'plugins' stage"; rc=1
+    fi
+
+    if [[ -f "$plugin_root/Touch N Stars/TouchNStars.dll" ]]; then
+        info "Touch-N-Stars plugin: present"
+        # The plugin is only the server; the browser UI is a separate Vue
+        # build served from <plugin>/app. Without it EmbedIO refuses to start
+        # the web server at all, so nothing listens on port 5000.
+        [[ -f "$plugin_root/Touch N Stars/app/index.html" ]] \
+            && info "Touch-N-Stars web UI: present" \
+            || { warn "Touch-N-Stars web UI missing: its web server will not start (run the plugins stage)"; rc=1; }
+    else
+        warn "Touch-N-Stars plugin missing from $plugin_root"
     fi
 
     # -- USB ---------------------------------------------------------------

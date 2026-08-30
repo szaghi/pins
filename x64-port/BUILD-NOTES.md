@@ -634,3 +634,72 @@ as SSH needed:
 ```bash
 sudo ufw allow from 192.168.1.0/24 to any port 1888 proto tcp
 ```
+
+## THE PLUGIN FOLDER IS 3.0.0, NOT THE APP VERSION (2026-08-30)
+
+Deploying plugins to a folder named after the application version puts them
+somewhere PINS never looks, and it fails **silently**: the app starts, the
+plugins are simply absent, and any copy previously installed from the official
+plugin repository wins instead.
+
+`Constants.cs:26` keys the folder on `ApplicationVersionWithoutRevision`, which
+`Constants.cs:35-39` reads from the `PluginMinimumApplicationVersion` assembly
+metadata of NINA.Plugin -- **not** from `CoreUtil.Version`. That metadata is set
+nowhere in this repo, so the fallback applies and the folder is `3.0.0` even
+though PINS is 3.3.0.1053:
+
+```
+~/.local/share/NINA/Plugins/3.0.0/
+```
+
+### Folder names must match the plugin's display Name
+Not the project name, not the assembly name:
+
+| Plugin | Assembly | Folder |
+|---|---|---|
+| ninaAPI | `ninaAPI.dll` | `Advanced API` |
+| Touch-N-Stars | `TouchNStars.dll` | `Touch N Stars` (spaces) |
+
+That is the folder the official repository installs into, and
+`TouchNStarsServer.cs:29` resolves its web root from
+`Assembly.GetExecutingAssembly().Location`, so the running copy's own directory
+is what matters. Deploying beside a downloaded copy under a different name
+leaves two installations and the downloaded one loads.
+
+### The symptom this produced
+Both plugins reported `Successfully loaded plugin`, ninaAPI served port 1888
+correctly, and yet nothing listened on 5000:
+
+```
+ERROR|TouchNStarsServer.cs|Start|77|failed to start web server:
+System.ArgumentException: The directory name
+'/home/stefano/.local/share/NINA/Plugins/3.0.0/Touch N Stars/app'
+does not exist. (Parameter 'path')
+```
+
+The loaded Touch-N-Stars was the *downloaded* one in `3.0.0/Touch N Stars/`,
+which has 7 files and no `app/`, while our build sat unused in
+`3.3.0/Touch-N-Stars/`. EmbedIO refuses to start a static-folder module whose
+directory is missing, so the whole TNS web server aborts -- the plugin loads
+but serves nothing.
+
+### Two ports, two servers
+| Port | Server | Serves |
+|---|---|---|
+| 1888 | ninaAPI (`API.cs`) | REST API, `/v2/api/...` |
+| 5000 | Touch-N-Stars (`TouchNStarsServer.cs`) | the Vue UI at `/` |
+
+Hitting `/` on 1888 gives `404 ... EmbedIO.HttpException: No module was able to
+serve the requested path`, which looks like a broken deployment but is just the
+wrong port. Both need opening in ufw; the frontend on 5000 calls the API on
+1888.
+
+### Verified working (2026-08-30)
+```
+$ ss -tln | grep -E ":1888|:5000"
+LISTEN 0 0 *:1888 *:*
+LISTEN 0 0 *:5000 *:*
+
+$ curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/
+200
+```

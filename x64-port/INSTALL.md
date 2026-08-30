@@ -110,7 +110,8 @@ Expect several `sudo` prompts. On 4 cores:
 | `deps` | 1–2 min | ~21 distro packages, plus `libindi` on Arch |
 | `indi` | 5–10 min | INDI core (Arch: package; Debian: source build ~30 min), then `indi_toupbase` and `indi_eqmod` from source. Clones indi-3rdparty, ~1.2 GB |
 | `pins` | 15–30 min | .NET SDK (236 MB), PINS clone with submodules (~900 MB), build, publish |
-| `plugins` | 3–5 min | ninaAPI + Touch-N-Stars, then `npm ci` and the Vue build |
+| `plugins` | 3–5 min | ninaAPI, Touch-N-Stars and Three Point Polar Alignment, then `npm ci` and the Vue build |
+| `astap` | 5–15 min | ASTAP plate solver (7 MB) plus the star database (D80, **1.2 GB**) |
 | `external` | 1–3 min | `pins.external` via Git LFS, ~130 MB |
 | `verify` | seconds | checks |
 
@@ -157,6 +158,9 @@ A good result, exit code 0:
    ninaAPI plugin: ~/.local/share/NINA/Plugins/3.0.0/Advanced API/
    Touch-N-Stars plugin: present
    Touch-N-Stars web UI: present
+   Three Point Polar Alignment: present
+   astap_cli: /opt/astap/astap_cli
+   star database: 290 file(s)
    USB subsystem present
 
 == All checks passed
@@ -331,7 +335,64 @@ Leave `CameraSettings-IndiDriver` at `None` for native. To use INDI instead, set
 it to `indi_toupcam_ccd` and restart — the INDI camera then appears alongside
 the native one, distinguishable by id.
 
-### 6.4 Cooling ramp
+### 6.4 Plugins
+
+Three are built and deployed by the `plugins` stage:
+
+| Plugin | Folder | Why |
+|---|---|---|
+| ninaAPI | `Advanced API` | the REST API on 1888. Without it there is no UI at all |
+| Touch-N-Stars | `Touch N Stars` | the web UI on 5000, plus its Vue app in `app/` |
+| Three Point Polar Alignment | `Three Point Polar Alignment` | **TPPA** — polar alignment, not optional on an equatorial mount |
+
+They live in `~/.local/share/NINA/Plugins/3.0.0/`, one folder per plugin named
+after its *display* name, each with its full dependency set beside it.
+
+TPPA serves live drift data over a WebSocket at `/v2/tppa` on port 1888, which
+the Touch-N-Stars polar alignment view consumes. Confirm it loaded:
+
+```bash
+grep 'Successfully loaded plugin' ~/.local/share/NINA/Logs/*.log | tail -3
+```
+
+Other plugins in the fork that build for Linux but are **not** deployed by
+default — add them to the `for spec in` list in `stage_plugins` if you want
+them: `joko.nina.plugins`, `LiveStack`, `nina.plugin.phd2tools`. Two do not
+build for Linux at all: `NINA.Joko.Plugin.TenMicron` (net8.0-windows) and
+`nina.plugin.orbuculum` (net7.0-windows).
+
+### 6.5 Plate solver (ASTAP)
+
+Plate solving underpins **TPPA, framing and centering**. PINS defaults
+`PlateSolverType` to ASTAP, but `ASTAPLocation` starts empty, so a fresh
+profile fails at the first solve with no useful message.
+
+The `astap` stage installs the solver to `/opt/astap`. Point the profile at the
+**CLI** binary:
+
+```bash
+curl "http://$H:1888/v2/api/profile/change-value?settingpath=PlateSolveSettings-ASTAPLocation&newValue=/opt/astap/astap_cli"
+```
+
+`astap_cli` rather than `astap`: the CLI build is statically linked with zero
+library dependencies, while the GUI binary needs Qt5. On a headless rig that is
+one less thing to break on a distro update.
+
+#### Star databases
+
+ASTAP does nothing without one. Pick by the narrowest field you will solve:
+
+| Database | Size | Reliable field |
+|---|---|---|
+| `d05` | 100 MB | 0.6–10° |
+| `d20` | 400 MB | 0.3–10° |
+| `d50` | 900 MB | 0.2–10° |
+| **`d80`** | **1.2 GB** | **0.15–10°** — the installer default |
+
+Override with `ASTAP_DB=d50` before running the stage. The files are `*.290`
+and live beside the binary in `/opt/astap`.
+
+### 6.6 Cooling ramp
 
 `CoolingDuration` is the ramp time in minutes. The UI's own field default (10)
 is used when the caller does not specify, which makes cooling look
@@ -613,7 +674,32 @@ Re-read the list and use the entry **not** marked `(OFFLINE)`:
 curl -s "http://$H:1888/v2/api/equipment/camera/list-devices"
 ```
 
-### 9.9 Phantom Alpaca devices
+### 9.9 Plate solving fails / TPPA will not run
+
+TPPA solves each of its three points, so a broken solver stops it immediately.
+
+```bash
+ls -l /opt/astap/astap_cli          # the binary
+ls /opt/astap/*.290 | wc -l         # the star database
+curl -s "http://$H:1888/v2/api/profile/show?active=true" \
+  | grep -o '"ASTAPLocation":"[^"]*"'
+```
+
+All three must be right: binary present, database non-empty, and
+`ASTAPLocation` pointing at `/opt/astap/astap_cli`. An empty `ASTAPLocation`
+is the default on a fresh profile.
+
+Test the solver directly, outside PINS:
+
+```bash
+/opt/astap/astap_cli -f <some.fits> -r 30 -fov 0
+```
+
+Note TPPA also needs the mount connected and a **correct site** — see
+[§6.1](#61-site-coordinates--decimal-degrees). With mangled coordinates it will
+solve but compute nonsense.
+
+### 9.10 Phantom Alpaca devices
 
 With no hardware attached, every device class may report exactly one Alpaca
 device. Something on the LAN is answering discovery on UDP 32227. Harmless but
@@ -623,7 +709,7 @@ it clutters the chooser:
 ss -lunp | grep 32227
 ```
 
-### 9.10 Cooling seems too slow
+### 9.11 Cooling seems too slow
 
 Not a fault — the setpoint is ramped over `CoolingDuration` minutes. Check the
 log:
@@ -632,7 +718,7 @@ log:
 Cooling Camera. Target: -5 Duration: 00:10:00
 ```
 
-See [§6.4](#64-cooling-ramp). Note the sensor reports **die** temperature, 10–15 °C
+See [§6.6](#66-cooling-ramp). Note the sensor reports **die** temperature, 10–15 °C
 above ambient when idle: 35–38 °C in a 22 °C room is normal. Proof the TEC works
 is the temperature going *below* ambient.
 

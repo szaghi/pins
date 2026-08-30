@@ -15,6 +15,7 @@
 #   pins      clone PINS, build linux-x64, publish
 #   plugins   build ninaAPI + Touch-N-Stars (the headless UI; without this
 #             PINS runs but has no API server and no user interface)
+#   astap     ASTAP plate solver + star database (needed by TPPA, framing)
 #   external  populate External/linux-x64 (vendor SDKs + SOFA/NOVAS)
 #   verify    check the result actually runs
 #
@@ -67,7 +68,8 @@ usage() {
 
 Usage: $0 [options] [stage]
 
-Stages: deps | indi | pins | plugins | external | verify | all   (default: all)
+Stages: deps | indi | pins | plugins | astap | external | verify | all
+        (default: all)
 
 Options:
   -w, --work-dir DIR     scratch tree for clones and build output
@@ -88,6 +90,7 @@ remote, branch and commit it is actually building, so check that line.
 Environment overrides (flags win):
   INDI_VERSION PINS_REPO PINS_BRANCH EXTERNAL_REPO DOTNET_VERSION
   WORK PUBLISH DOTNET_ROOT INDI_PREFIX INDI_FROM_SOURCE
+  ASTAP_DB (d05|d20|d50|d80, default d80) ASTAP_PREFIX
 
 Reusing an existing build tree matters: the indi-core and indi-3rdparty
 clones are ~1.2 GB and the core build takes tens of minutes, so point
@@ -552,8 +555,17 @@ stage_plugins() {
     # that is the folder the official plugin repository installs into and the
     # one a previously-downloaded copy already occupies. Deploying beside it
     # under a different name leaves two copies, and the downloaded one wins.
+    # Three Point Polar Alignment (TPPA) is not optional for an equatorial rig.
+    # ninaAPI serves its live drift data over a WebSocket at /v2/tppa
+    # (API.cs:55), and Touch-N-Stars has a TPPA view that connects to it, so
+    # without the plugin the UI offers no polar alignment at all.
+    #
+    # Its csproj multi-targets net10.0-windows7.0;net10.0 -- pin -f net10.0 as
+    # for the others. Folder name is its AssemblyTitle, "Three Point Polar
+    # Alignment"; the assembly itself is NINA.Plugins.PolarAlignment.dll.
     for spec in "Advanced API:NINA.Plugins/ninaAPI/ninaAPI/ninaAPI.csproj" \
-                "Touch N Stars:NINA.Plugins/Touch-N-Stars/Touch-N-Stars/Touch-N-Stars.csproj"; do
+                "Touch N Stars:NINA.Plugins/Touch-N-Stars/Touch-N-Stars/Touch-N-Stars.csproj" \
+                "Three Point Polar Alignment:NINA.Plugins/PolarAlignment/PolarAlignment/NINA.Plugins.PolarAlignment.csproj"; do
         name=${spec%%:*}
         proj=${spec#*:}
 
@@ -645,6 +657,92 @@ deploy_webapp() {
 }
 
 # ------------------------------------------------------------ stage: external
+# ------------------------------------------------------------- stage: astap
+# ASTAP is the plate solver. PINS defaults PlateSolverType to ASTAP, and
+# without it Three Point Polar Alignment, framing and centering all fail at
+# their first solve -- TPPA solves each of its three points.
+#
+# Installed from the upstream .deb rather than the AUR. The AUR packages are
+# effectively unmaintained (astap-bin is from 2023 with zero votes) and the
+# source package builds through the Lazarus Pascal toolchain, which is a large
+# dependency and a build-time risk. Extracting the .deb with ar+tar works
+# identically on Arch and Debian, needs no AUR helper, and tracks upstream.
+#
+# We install **astap_cli**, not the GUI binary: it is statically linked (zero
+# unresolved libraries, verified) whereas the GUI needs Qt5. On a headless rig
+# that is one less thing to break on a distro update.
+#
+# The star database is mandatory and is the bulk of the download. Sizes and
+# usable fields, from hnsky.org:
+#   d05  100 MB  0.6-10 deg      d50  900 MB  0.2-10 deg
+#   d20  400 MB  0.3-10 deg      d80  1.2 GB  0.15-10 deg
+# Default d80: widest coverage, and disk is cheap next to a failed alignment.
+ASTAP_DB="${ASTAP_DB:-d80}"
+ASTAP_PREFIX="${ASTAP_PREFIX:-/opt/astap}"
+
+stage_astap() {
+    log "Stage: ASTAP plate solver (database: $ASTAP_DB)"
+
+    mkdir -p "$WORK/astap-dl"
+
+    # -- the solver ---------------------------------------------------------
+    if [[ -x "$ASTAP_PREFIX/astap_cli" ]]; then
+        info "astap_cli already installed: $("$ASTAP_PREFIX/astap_cli" 2>&1 | head -1)"
+    else
+        local deb="$WORK/astap-dl/astap_amd64.deb"
+        if [[ ! -f "$deb" ]]; then
+            info "downloading astap_amd64.deb (~7 MB)"
+            curl -fsSL -o "$deb" "https://www.hnsky.org/astap_amd64.deb" \
+                || die "could not download ASTAP"
+        fi
+        info "installing to $ASTAP_PREFIX"
+        (
+            cd "$WORK/astap-dl"
+            rm -rf extract && mkdir extract && cd extract
+            ar x "$deb"
+            tar -xf data.tar.* 
+            sudo mkdir -p "$ASTAP_PREFIX"
+            sudo cp -a opt/astap/. "$ASTAP_PREFIX/"
+        )
+        # Symlink both: PINS is pointed at astap_cli, but the GUI name is what
+        # most documentation and other tools expect to find on PATH.
+        sudo ln -sf "$ASTAP_PREFIX/astap_cli" /usr/local/bin/astap_cli
+        [[ -x "$ASTAP_PREFIX/astap" ]] && sudo ln -sf "$ASTAP_PREFIX/astap" /usr/local/bin/astap
+        info "installed: $("$ASTAP_PREFIX/astap_cli" 2>&1 | head -1)"
+    fi
+
+    # -- the star database --------------------------------------------------
+    # ASTAP looks for *.290 files beside the binary.
+    if compgen -G "$ASTAP_PREFIX/*.290" >/dev/null 2>&1; then
+        info "star database already present: $(ls "$ASTAP_PREFIX"/*.290 2>/dev/null | wc -l) files"
+        return 0
+    fi
+
+    local dbdeb="$WORK/astap-dl/${ASTAP_DB}_star_database.deb"
+    if [[ ! -f "$dbdeb" ]]; then
+        info "downloading the $ASTAP_DB star database (this is the big one)"
+        curl -fsSL -o "$dbdeb" \
+            "https://sourceforge.net/projects/astap-program/files/star_databases/${ASTAP_DB}_star_database.deb/download" \
+            || die "could not download the $ASTAP_DB database"
+    fi
+
+    info "installing the star database"
+    (
+        cd "$WORK/astap-dl"
+        rm -rf dbextract && mkdir dbextract && cd dbextract
+        ar x "$dbdeb"
+        tar -xf data.tar.*
+        # The .deb lays the files out under ./opt/astap or ./usr/share/astap
+        # depending on the release; copy whichever exists.
+        local src=""
+        [[ -d opt/astap ]]       && src=opt/astap
+        [[ -d usr/share/astap ]] && src=usr/share/astap
+        [[ -n "$src" ]] || die "unexpected database .deb layout"
+        sudo cp -a "$src/." "$ASTAP_PREFIX/"
+    )
+    info "star database: $(ls "$ASTAP_PREFIX"/*.290 2>/dev/null | wc -l) files, $(du -sh "$ASTAP_PREFIX" | cut -f1) total"
+}
+
 stage_external() {
     log "Stage: External native libraries"
 
@@ -841,6 +939,29 @@ stage_verify() {
         warn "Touch-N-Stars plugin missing from $plugin_root"
     fi
 
+    # TPPA: polar alignment. Not optional on an equatorial mount.
+    [[ -f "$plugin_root/Three Point Polar Alignment/NINA.Plugins.PolarAlignment.dll" ]] \
+        && info "Three Point Polar Alignment: present" \
+        || warn "Three Point Polar Alignment missing: no polar alignment in the UI"
+
+    # -- plate solver ------------------------------------------------------
+    # PINS defaults PlateSolverType to ASTAP. Without the binary AND a star
+    # database, TPPA, framing and centering all fail at their first solve.
+    if [[ -x "$ASTAP_PREFIX/astap_cli" ]]; then
+        info "astap_cli: $ASTAP_PREFIX/astap_cli"
+        local ndb
+        ndb=$(compgen -G "$ASTAP_PREFIX/*.290" 2>/dev/null | wc -l)
+        if (( ndb > 0 )); then
+            info "star database: $ndb file(s)"
+        else
+            warn "ASTAP has no star database (*.290); every plate solve will fail"
+            rc=1
+        fi
+    else
+        warn "astap_cli not found at $ASTAP_PREFIX; plate solving unavailable"
+        warn "run the 'astap' stage"; rc=1
+    fi
+
     # -- USB ---------------------------------------------------------------
     # WSL2 has no USB passthrough by default; on real hardware this exists.
     [[ -d /sys/bus/usb/devices ]] && info "USB subsystem present" \
@@ -905,11 +1026,12 @@ main() {
         indi)     stage_indi ;;
         pins)     stage_pins ;;
         plugins)  stage_plugins ;;
+        astap)    stage_astap ;;
         external) stage_external ;;
         verify)   stage_verify ;;
         all)      stage_deps; stage_indi; stage_pins; stage_plugins
-                  stage_external; stage_verify ;;
-        *)        die "unknown stage '$stage' (deps|indi|pins|plugins|external|verify|all)" ;;
+                  stage_astap; stage_external; stage_verify ;;
+        *)        die "unknown stage '$stage' (deps|indi|pins|plugins|astap|external|verify|all)" ;;
     esac
 }
 

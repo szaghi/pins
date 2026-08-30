@@ -1179,3 +1179,50 @@ Verified on the quark against a live install:
 ```
 
 ...and the profile on disk still read `indi_eqmod_telescope` afterwards.
+
+## TPPA (Three Point Polar Alignment) -- BUILT AND LOADING (2026-08-30)
+
+The plugin stage originally built only ninaAPI and Touch-N-Stars, so polar
+alignment was absent from the UI. TPPA is in the fork already, as the
+`PolarAlignment` submodule (`nitr57/nina.plugin.polaralignment`), and it builds
+for Linux unmodified:
+
+```
+Successfully loaded plugin Three Point Polar Alignment version 1.0.0.0
+  by Stefan Berg @isbeorn
+```
+
+Identity, which decides where it must be deployed:
+
+| | |
+|---|---|
+| submodule | `NINA.Plugins/PolarAlignment` |
+| csproj | `NINA.Plugins.PolarAlignment.csproj`, targets `net10.0-windows7.0;net10.0` |
+| assembly | `NINA.Plugins.PolarAlignment.dll` |
+| **folder** | **`Three Point Polar Alignment`** (its `AssemblyTitle`) |
+
+ninaAPI already carries the server half: `TPPASocket` is registered at
+`/v2/tppa` (`API.cs:55`) and answers a WebSocket upgrade with
+`101 Switching Protocols`, logging `TPPA WebSocket connected`. Touch-N-Stars
+has the matching client in `src/services/websocketTppa.js`. So the only thing
+missing was the plugin itself.
+
+### Which other plugins could be added
+Checked every submodule's target framework:
+
+| Plugin | Targets | Linux? |
+|---|---|---|
+| ninaAPI | `net10.0` | yes -- deployed |
+| Touch-N-Stars | `net10.0-windows;net10.0` | yes -- deployed |
+| PolarAlignment | `net10.0-windows7.0;net10.0` | yes -- deployed |
+| joko.nina.plugins | `net10.0-windows7.0;net10.0` | buildable, not deployed |
+| LiveStack | `net10.0-windows;net10.0` | buildable, not deployed |
+| nina.plugin.phd2tools | `net10.0-windows;net10.0` | buildable, not deployed |
+| NINA.Joko.Plugin.TenMicron | `net8.0-windows7.0` | **no** |
+| nina.plugin.orbuculum | `net7.0-windows` | **no** |
+
+Adding one is a single entry in the `for spec in` list in `stage_plugins`,
+formatted `"Display Name:path/to/plugin.csproj"`. The display name must match
+the plugin's `AssemblyTitle`, not the project or assembly name -- that is the
+folder the official plugin repository would install into, and the folder the
+running assembly resolves its own resources from.

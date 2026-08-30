@@ -11,7 +11,7 @@
 #
 # Stages (each can be run alone, see --help):
 #   deps      distro packages needed to build and run
-#   indi      INDI core + indi_toupbase
+#   indi      INDI core + indi_toupbase (camera) + indi_eqmod (mount)
 #   pins      clone PINS, build linux-x64, publish
 #   plugins   build ninaAPI + Touch-N-Stars (the headless UI; without this
 #             PINS runs but has no API server and no user interface)
@@ -275,7 +275,7 @@ stage_deps() {
 
 # ---------------------------------------------------------------- stage: indi
 stage_indi() {
-    log "Stage: INDI core + indi_toupbase"
+    log "Stage: INDI core + indi_toupbase + indi_eqmod"
 
     mkdir -p "$WORK"
 
@@ -286,6 +286,7 @@ stage_indi() {
     fi
 
     indi_toupbase_from_source
+    indi_eqmod_from_source
 }
 
 # Verify the distro actually gave us INDI >= 2, which is the whole reason
@@ -397,6 +398,43 @@ indi_toupbase_from_source() {
     # Reload udev so the camera is accessible without root on first plug-in.
     sudo udevadm control --reload-rules 2>/dev/null || true
     sudo udevadm trigger 2>/dev/null || true
+}
+
+# EQMod: the driver for SkyWatcher/Orion mounts reached through an EQDIR cable
+# straight into the mount's handset port, with no SynScan handset in the chain
+# (HEQ5 Pro, EQ6, AZ-EQ6, Star Adventurer GTi...).
+#
+# Like toupbase it lives in indi-3rdparty rather than INDI core, so a distro
+# libindi does NOT provide it and `pacman -S libindi` leaves you without a
+# mount driver. Core does ship indi_synscan_telescope, but that speaks the
+# handset protocol: point it at an EQDIR cable and the connection fails with
+#
+#   [INDI Message][SynScan] [ERROR] Serial read error: Timeout error.
+#
+# which looks like broken hardware rather than the wrong driver.
+#
+# Defaults are correct: WITH_AHP_GT is already Off (an AHP GoTo controller
+# upgrade), and alignment/EQMod-alignment/scope-limits are On, which is what
+# EQMod users want. Only AHP_GT would pull a REQUIRED find_package we cannot
+# satisfy, and it is off.
+indi_eqmod_from_source() {
+    [[ -d "$WORK/indi-3rdparty/.git" ]] \
+        || die "indi-3rdparty not cloned; indi_toupbase_from_source runs first"
+
+    local prefix="$INDI_PREFIX"
+    (( INDI_FROM_SOURCE )) || prefix=/usr
+    info "installing eqmod into $prefix"
+
+    mkdir -p "$WORK/build-eqmod"
+    (
+        cd "$WORK/build-eqmod"
+        cmake -DCMAKE_INSTALL_PREFIX="$prefix" \
+              -DCMAKE_BUILD_TYPE=Release \
+              "$WORK/indi-3rdparty/indi-eqmod"
+        make -j"$(nproc)"
+        sudo make install
+    )
+    sudo ldconfig
 }
 
 # ---------------------------------------------------------------- stage: pins
@@ -703,6 +741,15 @@ stage_verify() {
         fi
     done
     (( found_toup )) || { warn "no toupcam driver found on PATH"; rc=1; }
+
+    # EQMod, for SkyWatcher mounts on an EQDIR cable. Not in INDI core, so a
+    # distro libindi alone leaves you with no mount driver.
+    if command -v indi_eqmod_telescope >/dev/null; then
+        info "eqmod driver: $(command -v indi_eqmod_telescope)"
+    else
+        warn "indi_eqmod_telescope not found; SkyWatcher mounts on EQDIR will not connect"
+        rc=1
+    fi
 
     if command -v indi_simulator_ccd >/dev/null; then
         info "simulators: present"

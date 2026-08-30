@@ -1034,8 +1034,12 @@ SynScan selected the failure was clean and well-instrumented:
 ```
 
 `indi_eqmod_telescope` is NOT in INDI core -- it lives in indi-3rdparty, like
-toupbase. Build it from the tree already cloned; defaults are correct
-(`WITH_AHP_GT` is already OFF, and alignment/scope-limits are ON):
+toupbase, so `pacman -S libindi` leaves you with no mount driver. **The `indi`
+stage now builds it automatically**, alongside toupbase, and `verify` fails if
+it is absent. Defaults are correct: `WITH_AHP_GT` is already Off (an AHP GoTo
+controller upgrade) and alignment/EQMod-alignment/scope-limits are On.
+
+To build it by hand:
 
 ```bash
 mkdir -p ~/pins-build/build-eqmod && cd ~/pins-build/build-eqmod

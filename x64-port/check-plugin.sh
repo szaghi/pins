@@ -143,6 +143,26 @@ seqitems=$(grep -rlE 'ISequenceItem|: *SequenceItem|SequenceContainer' "$dir" \
 info "exports: ${exports:-none found}"
 info "sequencer-item files: $seqitems"
 
+# Transport check, before the export checks: a plugin that reaches hardware
+# through raw ASCOM commands cannot work here whatever it exports. PINS drives
+# equipment through INDI, and NINA.INDI implements no SendCommand* at all --
+# grep it: the string does not appear in that project. OnStepX Tools fails this
+# way, and its capability turned out to live in indi_lx200_OnStep instead.
+# Match CALL sites only (x.SendCommandString(...)), not declarations: ninaAPI
+# implements these as interface members on its own networked drivers, which is
+# not the same thing and must not be flagged.
+rawcmd=$(grep -rlE '\.(SendCommandString|SendCommandBool|SendCommandBlind)\s*\(' "$dir" \
+         --include=*.cs 2>/dev/null | grep -viE '[Tt]est' | wc -l)
+if (( rawcmd > 0 )); then
+    warn "$rawcmd file(s) call SendCommandString/Bool/Blind: raw ASCOM commands"
+    warn "NINA.INDI implements none of these, so every such call throws or"
+    warn "returns null on PINS. This is a TRANSPORT blocker: no amount of"
+    warn "porting fixes it."
+    warn "Check first whether an INDI driver already provides the capability"
+    warn "(indi_lx200_OnStep did, for OnStepX Tools). See PLUGINS.md."
+    verdict=1
+fi
+
 if (( seqitems > 0 )); then
     good "has sequencer instructions — they will execute"
     warn "BUT Touch-N-Stars has no sequence EDITOR: it loads, starts and"

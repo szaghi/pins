@@ -47,6 +47,11 @@ survives any amount of porting.
 > `IDockableVM` will load successfully and then be **unreachable** — Touch-N-Stars
 > cannot render a WPF dockable, and there is no API to drive it.
 
+Before any of this, ask whether **INDI already provides the capability**: a
+plugin that reaches hardware through ASCOM is unportable regardless of its
+exports, and its function is often already in an INDI driver. See OnStepX Tools
+below.
+
 So a plugin is useful here only if it does at least one of:
 
 | Export | Verdict |
@@ -86,6 +91,29 @@ Two worked examples, both of which fail:
   because their only surface is sequencer instructions that no Linux tool can
   compose into a sequence. Orbuculum's submodule stays pinned in the fork;
   Orbitals was never added as one, so re-porting it starts from scratch.
+- **OnStepX Tools** — fails earlier than any of the above, on *transport*. It
+  drives the mount with raw LX200 commands through
+  `ITelescopeMediator.SendCommandString(":GX9A#", raw: true)`. That method is
+  implemented by the ASCOM/Alpaca device classes; the string `SendCommand`
+  appears nowhere in `NINA.INDI/`. PINS drives mounts through INDI, so every
+  mount call would throw or return null no matter how well the plugin is
+  ported. Its other blockers (3x `IDockableVM`, 5x `ISequenceItem`, no
+  `IPluggableBehavior`, `net8.0-windows`, `OxyPlot.Wpf`) are moot next to that.
+
+  **But the capability is not lost, and that is the point of this entry.**
+  `indi_lx200_OnStep` is a dedicated 5,555-line INDI driver that speaks 101
+  LX200 commands to the plugin's 75, and already implements the alignment
+  protocol natively: `:A?`, `:AW`, `:SX95/96/98/99`, exposed as INDI properties
+  `AlignStars` (1-9), `NewAlignStar`, NVRAM write and polar refine. An OnStepX
+  mount connects as an INDI telescope, exactly like the HEQ5 Pro through
+  `indi_eqmod_telescope`, with no plugin at all.
+
+  What the driver does *not* have is multi-point model generation: no spiral,
+  grid or sidereal-path point generation, and no flip-minimising ordering. If
+  n-star align proves insufficient on a given mount, the route is a standalone
+  tool -- `ModelManagement/ModelBuilder.cs` in the plugin (MIT) holds that
+  geometry and only 3 lines of it touch `SendCommandString` -- talking INDI
+  directly, rather than a port into PINS.
 
 ## Assessing a plugin: `check-plugin.sh`
 

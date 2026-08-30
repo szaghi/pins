@@ -115,6 +115,105 @@ Two worked examples, both of which fail:
   geometry and only 3 lines of it touch `SendCommandString` -- talking INDI
   directly, rather than a port into PINS.
 
+## Before declaring a capability missing, check the frontend
+
+Twice now the API has been searched for an endpoint, found not to have one, and
+the capability declared absent -- wrongly. **Touch-N-Stars is a full Vue
+application, not a thin view over `ninaAPI`.** It carries its own logic and
+calls external services directly, so a capability can be entirely present with
+no NINA endpoint behind it.
+
+The bundle is the system of record. It is not vendored in the submodule (the
+`Touch-N-Stars/` folder holds only the C# plugin); it is served at runtime:
+
+```bash
+curl -s http://<host>:5000/ | grep -oE '/js/[A-Za-z0-9._-]+\.js'
+curl -s http://<host>:5000/js/app.<hash>.js > /tmp/tns.js
+grep -ohiE 'simbad|targetSearch|/v2/api/[a-z/-]+' /tmp/tns.js | sort -u
+```
+
+### The imaging workflow, verified live
+
+Measured against a running PINS on the observatory host, mount and camera
+connected. The Windows chain sky atlas -> framing -> slew/centre/rotate ->
+sequencer maps across intact:
+
+| Windows NINA | PINS | Where it lives |
+|---|---|---|
+| Sky Atlas search | target search | **Touch-N-Stars frontend**, via Telescopius |
+| Framing Assistant | `/framing/set-coordinates`, `/framing/info`, `/framing/set-source` | `ninaAPI` |
+| slew / centre / rotate | `/framing/slew?slew_option=Center\|Rotate` | `ninaAPI` |
+| rotation solve | `/framing/determine-rotation`, `/framing/set-rotation` | `ninaAPI` |
+| hand to sequencer | `/sequence/set-target`, then `load` / `start` | `ninaAPI` |
+
+**The Framing Assistant works headless.** `Framing.cs` carries the comment
+`// Framing Assistant View needs to have been opened once before to be
+initialized`, which reads like a WPF blocker on a headless build. It is not:
+
+```
+/framing/info                                        -> camera 6224x4168, 3.76um, FL 490
+/framing/set-coordinates?RAangle=10.6847&DECangle=41.269  -> "Coordinates updated"
+/framing/info                                        -> RA 0h42m44.3s  Dec +41d16'08"
+```
+
+That is M31, converted and persisted, with no view ever opened. All five survey
+sources (`SKYATLAS`, `HIPS2FITS`, `ESO`, `NASA`, `STSCI`) are accepted.
+
+**There are two search paths, and only one needs internet.** `/targets/search`
+is `https://api.telescopius.com/v1.0`, keyed by a `telescopius_api_key`. But
+the TNS plugin also serves `GET :5000/api/ngc/search?query=M31&limit=3`, which
+drives NINA's own `DeepSkyObjectSearchVM` against the local catalogue and
+returns `[{"Name":"M 31","RA":10.6833,"Dec":41.2686}]` with no network. The sky
+chart is offline too: its `stellarium-web-engine` reads
+`:5000/stellarium-data/` -- 165 MB shipped with the plugin (83 MB surveys,
+80 MB DSO) -- not `data.stellarium.org`, which appears in the bundle only as a
+CC-BY attribution link.
+
+`~/.local/share/NINA/NINA.sqlite` (7.2 MB) is the same catalogue as a file:
+16,857 rows in `dsodetail`, 26,155 designations in `cataloguenr` across ~140
+catalogues. Joining the two resolves a name to degrees for
+`/framing/set-coordinates` with no network, if a script ever needs it directly.
+
+### The FOV assistant, and the blank-white trap
+
+The framing assistant reachable from the sky chart and the mount panel
+("open in framing assistant") draws the target image with a camera rectangle
+sized from the profile's `CameraWidth`/`CameraHeight`, plus a rotation control.
+It is fed by the TNS plugin's own `GET :5000/api/targetpic`
+(`width`, `height`, `fov`, `ra`, `dec`, `useCache`) -- **not** by
+`FramingAssistantVM`, so it ignores `set-source` and
+`SaveImageInOfflineCache` entirely. Changing those to influence it is wasted
+effort.
+
+`useCache` decides everything, and the failure is silent:
+
+| `useCache` | Result, measured with ImageMagick |
+|---|---|
+| `true` | `mean=1, sd=0` -- **every pixel pure white** |
+| `false` | `mean=0.05, sd=0.09` -- a real sky image, ~1.5 s |
+
+`true` is the frontend default (`useNinaCache: !0`), so the window opens blank
+white and looks broken. It is not: `CacheSkySurveyImageFactory` renders an
+empty frame when the cache has no entry, and on a headless PINS that cache is
+*always* empty -- its only writer is `FramingAssistantVM.cs:1203`, which runs
+on image load in the WPF view that never opens. `targetpic` reads that cache
+but never writes it, so it cannot fill itself.
+
+The fix is the **"use NINA cache for the target image"** toggle. It is not in
+the framing window itself: it sits in the mount/slew panel, beside the target
+dropdown. The value is shared store state, so flipping it there switches the
+framing assistant to the live HiPS fetch in *both* entry points at once.
+
+Offline cached target images therefore do not work at all. Making them work
+needs a patch in `TargetSearchController.FetchTargetPicture`: write fetched
+images into the cache, and fall back to a live fetch when a cache render comes
+back blank.
+
+**Verify images by pixel statistics, not HTTP status or byte count.** A blank
+512x512 white JPEG is a valid 4.7 KB 200 response and looks like success in
+every way that does not involve looking at it:
+`convert img.jpg -format "%[fx:mean] %[fx:standard_deviation]" info:`
+
 ## Assessing a plugin: `check-plugin.sh`
 
 ```bash

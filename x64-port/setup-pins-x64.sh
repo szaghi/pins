@@ -754,8 +754,11 @@ stage_verify() {
     # required; see the comment on the PackageReference in NINA/NINA.csproj.
     local ocv="$PUBLISH/libOpenCvSharpExtern.so"
     if [[ -f "$ocv" ]]; then
+        # `|| true`: grep exits 1 when nothing is missing, and under `set -e`
+        # that aborts the whole verify stage. The check would then only survive
+        # when OpenCV was broken -- exactly backwards.
         local ocv_missing
-        ocv_missing=$(ldd "$ocv" 2>/dev/null | grep 'not found' | awk '{print $1}' | paste -sd' ')
+        ocv_missing=$(ldd "$ocv" 2>/dev/null | grep 'not found' | awk '{print $1}' | paste -sd' ' || true)
         if [[ -n "$ocv_missing" ]]; then
             warn "libOpenCvSharpExtern.so cannot load, missing: $ocv_missing"
             warn "the UI will hang after an exposure; needs OpenCvSharp >= 4.13 (check NINA.csproj)"

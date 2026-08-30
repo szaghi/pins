@@ -136,6 +136,25 @@ Override the first two with `--work-dir` and `--publish-dir`.
 
 ---
 
+### 2.4 If pins.external is unavailable
+
+The `external` stage clones `nitr57/pins.external` for the vendor SDKs plus
+SOFA and NOVAS. That repository replaced a Nextcloud zip whose share URL
+started returning 503, so it is worth knowing there is a fallback if it goes
+the same way.
+
+`build-external-x64.sh` builds SOFA and NOVAS from the sources shipped **in
+this repository** — 248 C files for SOFA, and NOVAS has its own Linux makefile
+— and symlinks the system cfitsio and libraw:
+
+```bash
+./build-external-x64.sh
+```
+
+It cannot produce the proprietary vendor SDKs (ToupTek, ASI, and the rest), so
+it only covers the INDI path and the astrometry libraries. Enough to run, not
+enough for a native-SDK camera.
+
 ## 3. Verify
 
 ```bash

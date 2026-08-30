@@ -13,6 +13,8 @@
 #   deps      distro packages needed to build and run
 #   indi      INDI core + indi_toupbase
 #   pins      clone PINS, build linux-x64, publish
+#   plugins   build ninaAPI + Touch-N-Stars (the headless UI; without this
+#             PINS runs but has no API server and no user interface)
 #   external  populate External/linux-x64 (vendor SDKs + SOFA/NOVAS)
 #   verify    check the result actually runs
 #
@@ -65,7 +67,7 @@ usage() {
 
 Usage: $0 [options] [stage]
 
-Stages: deps | indi | pins | external | verify | all   (default: all)
+Stages: deps | indi | pins | plugins | external | verify | all   (default: all)
 
 Options:
   -w, --work-dir DIR     scratch tree for clones and build output
@@ -428,6 +430,80 @@ stage_pins() {
     )
 }
 
+# ------------------------------------------------------------- stage: plugins
+# Without this stage PINS runs but has no user interface.
+#
+# The headless product's UI is the Touch-N-Stars Vue app, which reaches the
+# backend over HTTP through the ninaAPI plugin (AGENTS.md, "Runtime Model").
+# Neither plugin is in NINA.sln and neither is referenced by NINA.csproj -- they
+# are git submodules under NINA.Plugins/ -- so `dotnet publish NINA.csproj`
+# produces a working binary with no API server. The symptom is nothing
+# listening on port 1888 and no PluginLoader lines in the log.
+#
+# ninaAPI.csproj carries a net10.0 configuration that ProjectReferences the
+# in-tree PINS projects, so it builds on Linux against the sources we just
+# compiled. (Its net8.0-windows configuration uses NuGet PackageReferences
+# instead; do not build that one here.)
+#
+# Layout: PluginAssemblyLoadContext resolves a plugin's dependencies from the
+# directory of the plugin DLL itself, recursively (PluginLoader.cs:724). So each
+# plugin gets its own subfolder containing its full dependency set. That is why
+# the whole bin directory is copied rather than just the plugin assembly, and
+# why doing so cannot clobber PINS's own assemblies.
+stage_plugins() {
+    log "Stage: PINS plugins (ninaAPI + Touch-N-Stars)"
+
+    [[ -d "$PINS_SRC" ]] || die "PINS source not found at $PINS_SRC; run the pins stage first"
+
+    export PATH="$DOTNET_ROOT:$PATH"
+    export DOTNET_CLI_TELEMETRY_OPTOUT=1
+    command -v dotnet >/dev/null || die "dotnet not found; run the pins stage first"
+
+    # Plugins live under a version-scoped folder keyed on the MAJOR.MINOR.BUILD
+    # that NINA.Plugin was compiled with (Constants.cs:26, UserExtensionsFolder).
+    # LocalApplicationData is ~/.local/share on Linux, giving
+    # ~/.local/share/NINA/Plugins/<major.minor.build>/.
+    local ver
+    ver=$(grep -oP 'AssemblyVersion\("\K[0-9]+\.[0-9]+\.[0-9]+' \
+              "$PINS_SRC/CommonAssemblyInfo.cs" 2>/dev/null | head -1)
+    [[ -n "$ver" ]] || die "could not read AssemblyVersion from CommonAssemblyInfo.cs"
+
+    local plugin_root="${XDG_DATA_HOME:-$HOME/.local/share}/NINA/Plugins/$ver"
+    info "plugin folder: $plugin_root"
+    mkdir -p "$plugin_root"
+
+    local built=0 name proj out
+    for spec in "ninaAPI:NINA.Plugins/ninaAPI/ninaAPI/ninaAPI.csproj" \
+                "Touch-N-Stars:NINA.Plugins/Touch-N-Stars/Touch-N-Stars/Touch-N-Stars.csproj"; do
+        name=${spec%%:*}
+        proj=${spec#*:}
+
+        if [[ ! -f "$PINS_SRC/$proj" ]]; then
+            warn "$name: $proj not found; submodule not checked out? skipping"
+            continue
+        fi
+
+        info "building $name"
+        if ! ( cd "$PINS_SRC" && dotnet build "$proj" -c Release -f net10.0 -r linux-x64 ); then
+            warn "$name failed to build; skipping"
+            continue
+        fi
+
+        out="$PINS_SRC/$(dirname "$proj")/bin/Release/net10.0/linux-x64"
+        if [[ ! -d "$out" ]]; then
+            warn "$name built but $out is missing; skipping"
+            continue
+        fi
+
+        rsync -a --delete "$out/" "$plugin_root/$name/"
+        info "$name -> $plugin_root/$name/"
+        built=$((built + 1))
+    done
+
+    (( built > 0 )) || die "no plugins were deployed; PINS will have no API and no UI"
+    info "deployed $built plugin(s)"
+}
+
 # ------------------------------------------------------------ stage: external
 stage_external() {
     log "Stage: External native libraries"
@@ -564,6 +640,31 @@ stage_verify() {
         fi
     done
 
+    # -- plugins -----------------------------------------------------------
+    # Without ninaAPI there is no HTTP server and therefore no user interface,
+    # which is easy to miss because PINS itself starts and runs perfectly.
+    local ver plugin_root
+    ver=$(grep -oP 'AssemblyVersion\("\K[0-9]+\.[0-9]+\.[0-9]+' \
+              "$PINS_SRC/CommonAssemblyInfo.cs" 2>/dev/null | head -1)
+    if [[ -n "$ver" ]]; then
+        plugin_root="${XDG_DATA_HOME:-$HOME/.local/share}/NINA/Plugins/$ver"
+        if [[ -f "$plugin_root/ninaAPI/ninaAPI.dll" ]]; then
+            info "ninaAPI plugin: $plugin_root/ninaAPI/"
+        else
+            warn "ninaAPI plugin missing from $plugin_root; PINS will have no API and no UI"
+            warn "run the 'plugins' stage"; rc=1
+        fi
+        # The folder is Touch-N-Stars but the assembly is TouchNStars
+        # (AssemblyName in its csproj), so match on any dll rather than a
+        # hardcoded name that would drift if upstream renames it.
+        [[ -n $(find "$plugin_root/Touch-N-Stars" -maxdepth 1 -name 'TouchNStars*.dll' -o \
+                     -maxdepth 1 -name 'Touch-N-Stars*.dll' 2>/dev/null | head -1) ]] \
+            && info "Touch-N-Stars plugin: present" \
+            || warn "Touch-N-Stars plugin missing from $plugin_root"
+    else
+        warn "cannot determine plugin folder version (no PINS source at $PINS_SRC)"
+    fi
+
     # -- USB ---------------------------------------------------------------
     # WSL2 has no USB passthrough by default; on real hardware this exists.
     [[ -d /sys/bus/usb/devices ]] && info "USB subsystem present" \
@@ -619,10 +720,12 @@ main() {
         deps)     stage_deps ;;
         indi)     stage_indi ;;
         pins)     stage_pins ;;
+        plugins)  stage_plugins ;;
         external) stage_external ;;
         verify)   stage_verify ;;
-        all)      stage_deps; stage_indi; stage_pins; stage_external; stage_verify ;;
-        *)        die "unknown stage '$stage' (deps|indi|pins|external|verify|all)" ;;
+        all)      stage_deps; stage_indi; stage_pins; stage_plugins
+                  stage_external; stage_verify ;;
+        *)        die "unknown stage '$stage' (deps|indi|pins|plugins|external|verify|all)" ;;
     esac
 }
 

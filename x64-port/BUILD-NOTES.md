@@ -1019,9 +1019,8 @@ Reboot fixed it, and `ftdi_sio` now autoloads.
 (USB 2.0, mount) and `2-3` (USB 3.0, camera). The kernel log showed the camera
 disconnecting in the same second the mount enumerated. Not a power budget: the
 hub reports Self Powered / MaxPower 0mA and the FT232R draws only 90 mA.
-UNRESOLVED -- the camera and mount have not yet been confirmed working
-simultaneously. Test before the rig; if they conflict, put the camera on a
-root port and leave the slow mount on the dock.
+RESOLVED (see below): they do coexist. The eviction was a transient during
+replugging, not a limitation.
 
 **3. The wrong driver, from a misread topology.** The cable plugs into the
 mount's *handset port* with **no handset in the chain** -- that is EQDIR, so
@@ -1072,3 +1071,54 @@ The mount stores its own copy, pushed at connect time, so correcting the
 profile is not enough: **disconnect and reconnect** for the mount to pick it
 up. Before the reconnect `mount/info` still reported the bad value while the
 profile read correctly.
+
+## CAMERA + MOUNT TOGETHER -- PASS (2026-08-30)
+
+Both devices connected at once, and a capture ran without disturbing the mount:
+
+```
+camera: Connected=True  ToupTek ATR2600C  6224x4168  temp=20.4
+mount:  Connected=True  EQMod Mount (INDI)  Dec +90 00' 00"
+capture -> 135 KB JPEG
+mount RA 18:04:56 -> 18:05:22 across the capture   <- still tracking sidereal
+```
+
+They sit on different controllers -- FTDI on bus 1 (USB 2.0 hub), camera on
+bus 2 (USB 3.0 hub) -- and the kernel logs no disconnects once both are
+settled. The earlier apparent eviction was a transient while replugging.
+
+### The ToupTek device ID encodes the USB bus path
+This cost time and looks exactly like a broken camera:
+
+```
+ToupTek_tp-2-1-7-0547-13da   <- before replug, later shown as (OFFLINE)
+ToupTek_tp-2-4-6-0547-13da   <- after replug, the live device
+```
+
+The `tp-2-4-6` segment is bus/port/device. **Replugging the camera, or any
+change in USB enumeration order, changes its PINS device id.** Connecting to
+the old id fails with:
+
+```
+System.Exception: Unable to connect to device 'ToupTek ATR2600C (547-13da)'
+  (ID: ToupTek_tp-2-1-7-0547-13da). Make sure it's plugged in, turned on,
+  and set up correctly.
+```
+
+...while the camera is plugged in, powered, and perfectly healthy. PINS keeps
+the stale entry in the chooser marked `(OFFLINE)` alongside the live one, so
+**always re-read `camera/list-devices` after any replug** rather than reusing
+a remembered id. A saved profile that auto-connects a specific camera id will
+break the same way after a cable change or a hub re-enumeration.
+
+Confirming the SDK is healthy, independent of PINS:
+
+```bash
+~/pins-build/build-toupbase/toupcam_test
+  Found 1 Toupcam device(s):
+    Device 0: ATR2600C (ID: usb-0547-13da-2-3-4)
+  Successfully opened device: ATR2600C
+```
+
+That binary talks straight to libtoupcam with no PINS involved, so a pass there
+narrows any remaining fault to PINS or the device id.

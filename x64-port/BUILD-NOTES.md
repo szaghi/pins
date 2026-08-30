@@ -1281,3 +1281,78 @@ $ /opt/astap/astap_cli
 ASTAP astrometric solver version CLI-2026.07.30
 ```
 A solve against real sky is still untested — that needs stars.
+
+## PLUGINS: WHY REPOSITORY PLUGINS DO NOT WORK (2026-08-30)
+
+PINS keeps the **entire** plugin-install system -- `InstallPluginCommand`,
+`PluginFetcher`, the official repository. It genuinely fetches them:
+
+```
+PluginFetcher.cs|RequestAll|57|Found 94 valid plugins at
+  https://nighttime-imaging.eu/wp-json/nina/v1/plugins/manifests
+```
+
+They download. They will not run.
+
+The manifests carry no platform information at all:
+
+```
+Author ChangelogURL Descriptions Homepage Identifier Installer License
+LicenseURL MinimumApplicationVersion Name Repository Tags Version
+```
+
+No `TargetFramework`, no `Platform`. And `PluginLoader` only checks **version**
+compatibility (`IsPluginCompatible`, `compatibilityMap` -- `PluginLoader.cs:370`),
+never the framework. Published plugins are built `net8.0-windows`, pulling in
+WPF and Win32, so a downloaded plugin either fails to load or throws on its
+first Windows call, with nothing warning you beforehand.
+
+**A plugin works on Linux only if its csproj was modified to add a `net10.0`
+target.** That is what distinguishes the ones in this fork.
+
+| Submodule | Targets | Linux |
+|---|---|---|
+| ninaAPI | `net10.0` | deployed |
+| Touch-N-Stars | `net10.0-windows;net10.0` | deployed |
+| PolarAlignment | `net10.0-windows7.0;net10.0` | deployed |
+| nina.plugin.phd2tools | `net10.0-windows;net10.0` | deployed |
+| LiveStack | `net10.0-windows;net10.0` | deployed (needed a fix, below) |
+| joko.nina.plugins | `net10.0-windows7.0;net10.0` | builds, not deployed |
+| NINA.Joko.Plugin.TenMicron | `net8.0-windows7.0` | **no** |
+| nina.plugin.orbuculum | `net7.0-windows` | **no** |
+
+### LiveStack needed a CLong fix
+It failed with two `CS1503` errors:
+
+```
+CFitsioFITSReader.cs(95,67): cannot convert from 'long[]' to
+  'System.Runtime.InteropServices.CLong[]'
+```
+
+cfitsio's `firstpix` is a C `long*`, which is **8 bytes on Linux (LP64) but 4
+on Windows (LLP64)**. `NINA.Image/FileFormat/FITS/CfitsioNative.cs:158` already
+declares the parameter as `CLong[]` for that reason; LiveStack was simply never
+updated to match and still passed `long[]`.
+
+Fixed by declaring the two local `firstpix` arrays as `CLong[]`. Verified both
+targets still build: 0 errors on `net10.0`, and no CS1503 on `net10.0-windows`.
+`CLong` is the portable type, so this is correct on Windows too and worth
+reporting upstream to `nitr57/nina.plugin.livestack`.
+
+### A plugin that fails to build does not fail the stage
+By design: `stage_plugins` warns and continues, so one broken plugin cannot
+cost you the API and the UI. Observed on the quark before the fix was pushed:
+
+```
+   building Livestack
+   building Phd2 Tools
+   Phd2 Tools -> .../Plugins/3.0.0/Phd2 Tools/
+   deployed 4 plugin(s)
+```
+
+### Adding another plugin
+One line in the `for spec in` list in `stage_plugins`, formatted
+`"Display Name:path/to/plugin.csproj"`. The display name must be the plugin's
+`AssemblyTitle` -- not the project or assembly name. For a plugin outside the
+fork the work is: fork it, add `net10.0` to `TargetFrameworks`, fix whatever
+Windows-only code that exposes, build.

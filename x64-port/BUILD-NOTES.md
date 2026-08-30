@@ -908,3 +908,90 @@ runs `ldd` on it and fails with the specific missing sonames plus the fix:
 WARN libOpenCvSharpExtern.so cannot load, missing: libtesseract.so.4 ...
 WARN the UI will hang after an exposure; needs OpenCvSharp >= 4.13
 ```
+
+## INDI CAMERA PATH + ABORT RACE -- PASS (2026-08-30)
+
+The second, independent route to the ATR2600C, and the one code path nothing
+had exercised.
+
+### Why no INDI camera appears by default
+PINS starts `indiserver` empty and loads drivers on demand by writing
+`start <driver>` into `/tmp/indiFIFO` (`INDIClient.cs:265`).
+`INDIInteraction.GetCameras` (`NINA.Equipment/Utility/INDIInteraction.cs:47`)
+reads **`CameraSettings.IndiDriver`** from the active profile and starts only
+that driver. A fresh profile has it set to `'None'`, so the log reads
+`Found 0 INDI Cameras` and nothing is wrong.
+
+Set it to the driver executable name -- for ToupTek-family cameras
+`indi_toupcam_ccd` (`/usr/bin/`, XML label "Toupcam"):
+
+```bash
+curl "http://<host>:1888/v2/api/profile/change-value?settingpath=CameraSettings-IndiDriver&newValue=indi_toupcam_ccd"
+```
+
+**A restart is required.** Re-listing devices returns a cached set; only a
+restart re-enumerates with the new driver. After it:
+
+```
+CameraChooserVM.cs|GetEquipment|247|Found 1 INDI Cameras
+$ pgrep -af indi_toupcam
+46507 indi_toupcam_ccd            <- started by indiserver via the FIFO
+```
+
+Note Touch-N-Stars' `INDIController` has routes for focuser, filterwheel,
+rotator, telescope, weather, switches and flatpanel but **not camera**, so the
+driver must be set through the profile API rather than the UI.
+
+### Telling the two paths apart
+Both cameras are listed simultaneously and are distinguishable by id:
+
+| id | Path |
+|---|---|
+| `ToupTek_tp-2-1-7-0547-13da` | native SDK (USB address in the id) |
+| `ToupTek ATR2600C` | INDI (the INDI device name) |
+
+Connected, the INDI one reports `DisplayName: ToupTek ATR2600C (INDI)`, same
+6224x4168 at 3.76 um. A 2 s capture returned a 101 KB JPEG.
+
+They contend for exclusive USB access, so disconnect one before connecting the
+other.
+
+### The StaleBlobDebounce abort race -- 3/3 PASS
+`INDICamera.cs:38-46` debounces stale BLOBs in a 500 ms window because INDI's
+`setBLOBVector` carries no per-exposure correlation id. With 52 MB frames the
+timing is real, and only a deliberate mid-exposure abort exercises it.
+
+Procedure: start 60 s, abort after 8-10 s, immediately start 2 s, fetch the
+result. A leaked stale frame would be obvious -- 30x the integration time at
+38 C, where dark current dominates, is far brighter.
+
+Mean pixel value of the returned 800x536 frames:
+
+```
+  indi     50.74    <- baseline, a normal 2 s exposure
+  abort1   51.08    <- fresh
+  abort2   52.38    <- fresh
+  abort3   52.46    <- fresh
+```
+
+All three post-abort frames match the 2 s baseline rather than a 60 s
+exposure, so the debounce correctly discarded the aborted BLOB every time.
+
+### Decision: native ToupTek SDK is the camera path
+Both routes are verified working, and the native SDK is the chosen default.
+`CameraSettings.IndiDriver` is left at `'None'`, so no INDI camera driver is
+started and the camera is reached in-process through
+`External/linux-x64/ToupTek/libtoupcam.so`.
+
+Rationale: fewer moving parts. The native path is one library in the publish;
+the INDI path adds an indiserver child process, a FIFO, a TCP hop and the
+BLOB debounce. The INDI route remains available and tested -- set
+`IndiDriver=indi_toupcam_ccd` and restart to switch -- and stays the fallback
+if the bundled SDK ever breaks on a future distro update.
+
+Confirmed after reverting:
+```
+Found 1 ToupTek Cameras
+Found 0 INDI Cameras
+pgrep indi_toupcam -> 0 processes
+```

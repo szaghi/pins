@@ -155,7 +155,7 @@ pkgs_for_family() {
                  libnova-dev libcfitsio-dev libusb-1.0-0-dev zlib1g-dev \
                  libgsl-dev libjpeg-dev libcurl4-gnutls-dev libtheora-dev \
                  libfftw3-dev libev-dev libudev-dev \
-                 libicu-dev \
+                 libicu-dev libraw-dev \
                  curl rsync file
             ;;
         arch)
@@ -164,7 +164,7 @@ pkgs_for_family() {
             echo base-devel cmake git git-lfs pkgconf \
                  libnova cfitsio libusb zlib gsl libjpeg-turbo curl libtheora \
                  fftw libev systemd-libs \
-                 icu \
+                 icu libraw \
                  rsync file
             ;;
     esac
@@ -494,8 +494,18 @@ stage_verify() {
         # indiserver in /usr/bin. PATH order decides which one PINS spawns,
         # and PINS pkill -9's every indiserver on startup, so a stale 1.9.9
         # winning the PATH is a real and confusing failure mode.
+        #
+        # `type -a`, not `command -v -a`: the -a flag is a zsh/dash extension
+        # that bash's builtin rejects outright, so the check silently found
+        # nothing and never fired.
+        #
+        # Resolve each hit to its real path before comparing. On Arch /usr/sbin
+        # is a symlink to /usr/bin, so the same binary is reported twice and a
+        # naive count warns about a conflict that does not exist.
         local others
-        others=$(command -v -a indiserver 2>/dev/null | tail -n +2)
+        others=$(type -aP indiserver 2>/dev/null \
+                 | xargs -r -n1 readlink -f 2>/dev/null \
+                 | sort -u | grep -Fxv "$(readlink -f "$srv")" || true)
         if [[ -n "$others" ]]; then
             warn "more than one indiserver on PATH; '$srv' wins:"
             printf '        also: %s\n' $others

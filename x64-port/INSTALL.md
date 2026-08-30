@@ -344,6 +344,9 @@ Three are built and deployed by the `plugins` stage:
 | ninaAPI | `Advanced API` | the REST API on 1888. Without it there is no UI at all |
 | Touch-N-Stars | `Touch N Stars` | the web UI on 5000, plus its Vue app in `app/` |
 | Three Point Polar Alignment | `Three Point Polar Alignment` | **TPPA** — polar alignment, not optional on an equatorial mount |
+| Livestack | `Livestack` | live stacking |
+| Phd2 Tools | `Phd2 Tools` | PHD2 guiding helpers |
+| Hocus Focus | `Hocus Focus` | improved star detection and autofocus, plus an aberration inspector for backfocus and sensor tilt |
 
 They live in `~/.local/share/NINA/Plugins/3.0.0/`, one folder per plugin named
 after its *display* name, each with its full dependency set beside it.
@@ -355,11 +358,14 @@ the Touch-N-Stars polar alignment view consumes. Confirm it loaded:
 grep 'Successfully loaded plugin' ~/.local/share/NINA/Logs/*.log | tail -3
 ```
 
-Other plugins in the fork that build for Linux but are **not** deployed by
-default — add them to the `for spec in` list in `stage_plugins` if you want
-them: `joko.nina.plugins`, `LiveStack`, `nina.plugin.phd2tools`. Two do not
-build for Linux at all: `NINA.Joko.Plugin.TenMicron` (net8.0-windows) and
+That is every plugin in the fork that targets `net10.0`. Two are Windows-only
+and cannot be built here: `NINA.Joko.Plugin.TenMicron` (net8.0-windows7.0) and
 `nina.plugin.orbuculum` (net7.0-windows).
+
+Plugins from the **official repository** will not work: their manifests carry
+no platform field, the loader checks only version compatibility, and they are
+built `net8.0-windows`. A plugin runs on Linux only if its csproj has a
+`net10.0` target — which is what distinguishes the six above.
 
 ### 6.5 Plate solver (ASTAP)
 

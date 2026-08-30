@@ -1316,12 +1316,12 @@ target.** That is what distinguishes the ones in this fork.
 | Touch-N-Stars | `net10.0-windows;net10.0` | deployed |
 | PolarAlignment | `net10.0-windows7.0;net10.0` | deployed |
 | nina.plugin.phd2tools | `net10.0-windows;net10.0` | deployed |
-| LiveStack | `net10.0-windows;net10.0` | deployed (needed a fix, below) |
-| joko.nina.plugins | `net10.0-windows7.0;net10.0` | builds, not deployed |
+| LiveStack | `net10.0-windows;net10.0` | deployed (needed a newer submodule pin) |
+| joko.nina.plugins (Hocus Focus) | `net10.0-windows7.0;net10.0` | deployed |
 | NINA.Joko.Plugin.TenMicron | `net8.0-windows7.0` | **no** |
 | nina.plugin.orbuculum | `net7.0-windows` | **no** |
 
-### LiveStack needed a CLong fix
+### LiveStack: the submodule was simply behind
 It failed with two `CS1503` errors:
 
 ```
@@ -1330,14 +1330,20 @@ CFitsioFITSReader.cs(95,67): cannot convert from 'long[]' to
 ```
 
 cfitsio's `firstpix` is a C `long*`, which is **8 bytes on Linux (LP64) but 4
-on Windows (LLP64)**. `NINA.Image/FileFormat/FITS/CfitsioNative.cs:158` already
-declares the parameter as `CLong[]` for that reason; LiveStack was simply never
-updated to match and still passed `long[]`.
+on Windows (LLP64)**. `NINA.Image/FileFormat/FITS/CfitsioNative.cs:158` declares
+the parameter as `CLong[]` for that reason.
 
-Fixed by declaring the two local `firstpix` arrays as `CLong[]`. Verified both
-targets still build: 0 errors on `net10.0`, and no CS1503 on `net10.0-windows`.
-`CLong` is the portable type, so this is correct on Windows too and worth
-reporting upstream to `nitr57/nina.plugin.livestack`.
+**Upstream had already fixed it.** The submodule was pinned to `6c3c07d9`,
+which still passed `long[]`; `upstream/main` already used `CLong[]`:
+
+| | `firstpix` |
+|---|---|
+| pinned `6c3c07d9` | `new long[nelem] { 1, row + 1 }` |
+| upstream `main` | `new CLong[nelem] { new(1), new(row + 1) }` |
+
+So the fix was to **advance the submodule pointer**, not to patch anything.
+Check `upstream/main` before writing a patch for a submodule -- the effort here
+went into reinventing a fix that already existed.
 
 ### A plugin that fails to build does not fail the stage
 By design: `stage_plugins` warns and continues, so one broken plugin cannot
@@ -1356,3 +1362,47 @@ One line in the `for spec in` list in `stage_plugins`, formatted
 `AssemblyTitle` -- not the project or assembly name. For a plugin outside the
 fork the work is: fork it, add `net10.0` to `TargetFrameworks`, fix whatever
 Windows-only code that exposes, build.
+
+## HOCUS FOCUS -- DEPLOYED (2026-08-30)
+
+The last Linux-capable plugin in the fork, in the `joko.nina.plugins`
+submodule. `AssemblyTitle` is **Hocus Focus**; assembly is
+`NINA.Joko.Plugins.HocusFocus.dll`.
+
+> Improved Star Detection, Star Annotation, Auto Focus, and Tilt Correction.
+> Includes an aberration inspector that measures backfocus and sensor tilt.
+
+The aberration inspector earns its place on a fast Newtonian: at f/4 the
+Quattro 8 is unforgiving about backfocus and tilt.
+
+### The ScottPlot worry was unfounded
+A `Scottplot/` source directory suggested a WPF charting dependency that would
+compile and then fail at runtime headless. It does not, because the csproj
+already handles it:
+
+```xml
+<PackageReference Condition="!$([System.Runtime.InteropServices.RuntimeInformation]
+    ::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))"
+    Include="ScottPlot.WPF" Version="4.1.59" />
+<PackageReference Include="ScottPlot" Version="4.1.59" />
+```
+
+`ScottPlot.WPF` is excluded on Linux; the non-WPF core still comes in. There is
+also a Linux post-build step copying to
+`$HOME/.local/share/NINA/Plugins/3.0.0/Hocus Focus/`, so upstream had already
+done the port. Build: 0 errors. Runtime:
+
+```
+PluginLoader.cs|LoadPlugin|410|Successfully loaded plugin Hocus Focus
+  version 3.0.0.24 by George Hilios (jokogeo)
+```
+
+### All six plugins now load
+```
+Advanced API, Touch 'N' Stars, Three Point Polar Alignment,
+Phd2 Tools, Livestack, Hocus Focus
+```
+
+That is every plugin in the fork that targets `net10.0`. The remaining two are
+Windows-only and cannot be built here: `NINA.Joko.Plugin.TenMicron`
+(net8.0-windows7.0) and `nina.plugin.orbuculum` (net7.0-windows).

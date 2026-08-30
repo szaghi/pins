@@ -555,10 +555,15 @@ stage_plugins() {
     # that is the folder the official plugin repository installs into and the
     # one a previously-downloaded copy already occupies. Deploying beside it
     # under a different name leaves two copies, and the downloaded one wins.
-    # Two other submodules are Windows-only and cannot be added here:
+    # Hocus Focus (in the joko.nina.plugins submodule) does improved star
+    # detection, autofocus, and an aberration inspector that measures backfocus
+    # and sensor tilt -- worth having on a fast Newtonian. Its csproj already
+    # excludes ScottPlot.WPF on Linux and has a Linux post-build copy step, so
+    # it was ported upstream; we only have to build and deploy it.
+    #
+    # Two submodules are Windows-only and cannot be added here:
     # NINA.Joko.Plugin.TenMicron (net8.0-windows7.0) and nina.plugin.orbuculum
-    # (net7.0-windows). joko.nina.plugins does build for net10.0 but is not
-    # deployed by default -- add a line for it if you want it.
+    # (net7.0-windows).
     #
     # Three Point Polar Alignment (TPPA) is not optional for an equatorial rig.
     # ninaAPI serves its live drift data over a WebSocket at /v2/tppa
@@ -572,7 +577,8 @@ stage_plugins() {
                 "Touch N Stars:NINA.Plugins/Touch-N-Stars/Touch-N-Stars/Touch-N-Stars.csproj" \
                 "Three Point Polar Alignment:NINA.Plugins/PolarAlignment/PolarAlignment/NINA.Plugins.PolarAlignment.csproj" \
                 "Livestack:NINA.Plugins/LiveStack/nina.plugin.livestack.csproj" \
-                "Phd2 Tools:NINA.Plugins/nina.plugin.phd2tools/nina.plugin.phd2tools.csproj"; do
+                "Phd2 Tools:NINA.Plugins/nina.plugin.phd2tools/nina.plugin.phd2tools.csproj" \
+                "Hocus Focus:NINA.Plugins/joko.nina.plugins/Joko.NINA.Plugins/Joko.NINA.Plugins.HocusFocus/Joko.NINA.Plugins.HocusFocus.csproj"; do
         name=${spec%%:*}
         proj=${spec#*:}
 

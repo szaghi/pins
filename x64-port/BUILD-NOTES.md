@@ -995,3 +995,80 @@ Found 1 ToupTek Cameras
 Found 0 INDI Cameras
 pgrep indi_toupcam -> 0 processes
 ```
+
+## HEQ5 PRO VIA EQDIR -- PASS (2026-08-30)
+
+```
+Connected: True   DisplayName: EQMod Mount (INDI)
+RightAscension 19:58:40   Declination +90 00' 00"   <- pointing at the pole,
+SiderealTime 13.98        AtPark False               correct home position
+```
+
+### Getting there: four separate obstacles
+
+**1. The kernel had no modules.** `modprobe ftdi_sio` failed with "Module not
+found in directory /lib/modules/7.2.0-1-cachyos". The installed package was
+`linux-cachyos 7.2.2-1`; the running kernel was 7.2.0-1, whose module tree had
+been deleted by the upgrade. **Zero** modules were loadable, not just ftdi_sio.
+This is the classic rolling-distro trap: a `pacman -Syu` that bumps the kernel
+breaks module loading until reboot, silently, while everything already loaded
+keeps working. On an observatory machine that means discovering it at dusk.
+Reboot fixed it, and `ftdi_sio` now autoloads.
+
+**2. USB devices evicting each other.** The dock presents two hubs -- `1-4`
+(USB 2.0, mount) and `2-3` (USB 3.0, camera). The kernel log showed the camera
+disconnecting in the same second the mount enumerated. Not a power budget: the
+hub reports Self Powered / MaxPower 0mA and the FT232R draws only 90 mA.
+UNRESOLVED -- the camera and mount have not yet been confirmed working
+simultaneously. Test before the rig; if they conflict, put the camera on a
+root port and leave the slow mount on the dock.
+
+**3. The wrong driver, from a misread topology.** The cable plugs into the
+mount's *handset port* with **no handset in the chain** -- that is EQDIR, so
+the driver is `indi_eqmod_telescope`, not `indi_synscan_telescope`. With
+SynScan selected the failure was clean and well-instrumented:
+
+```
+[SynScan] Setting CONNECTION_MODE to CONNECTION_SERIAL   OK
+[SynScan] Enabling DEVICE_AUTO_SEARCH                    OK
+[INDI Message][SynScan] [ERROR] Serial read error: Timeout error.
+```
+
+`indi_eqmod_telescope` is NOT in INDI core -- it lives in indi-3rdparty, like
+toupbase. Build it from the tree already cloned; defaults are correct
+(`WITH_AHP_GT` is already OFF, and alignment/scope-limits are ON):
+
+```bash
+mkdir -p ~/pins-build/build-eqmod && cd ~/pins-build/build-eqmod
+cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release \
+      ~/pins-build/indi-3rdparty/indi-eqmod
+make -j$(nproc) && sudo make install
+```
+
+**4. Profile changes are lost on pkill.** `change-value` reports
+`"Updated setting"` immediately but the profile is only written to disk on a
+**graceful** shutdown. Killing PINS with `pkill -x NINA` discards it, and the
+next start silently reuses the old driver -- which looked like the setting not
+taking effect at all. Use `pkill -TERM` and allow it to exit, then confirm the
+value landed in
+`~/.local/share/NINA/Profiles/<guid>.profile` before restarting.
+
+Also note a stale driver process survives a PINS restart and keeps holding the
+device name, so `pkill -f indi_<old>` as well when switching drivers.
+
+### Raw serial probes are not a reliable test
+`:e1` (EQMod) and `Kx` (SynScan) were silent at 9600/38400/115200 even though
+the mount was fine. The driver handles DTR/RTS and timing that a shell probe
+does not. Let the driver decide; its log gives a better verdict than a
+hand-rolled query.
+
+### Site coordinates were mangled
+The profile held `Latitude 414416.9` / `Longitude 125323.33` -- 41 44' 16.9"
+and 12 53' 23.33" written as concatenated digits instead of decimal degrees,
+presumably from the setup wizard. PINS wants decimal degrees; corrected to
+41.7380 / 12.8898.
+
+The mount stores its own copy, pushed at connect time, so correcting the
+profile is not enough: **disconnect and reconnect** for the mount to pick it
+up. Before the reconnect `mount/info` still reported the bad value while the
+profile read correctly.

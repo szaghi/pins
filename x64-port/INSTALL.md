@@ -481,8 +481,59 @@ keeps tracking sidereal time through the frame transfer.
 ### Start
 
 ```bash
-cd ~/pins-run && ./NINA
+~/pins-tooling/x64-port/start-pins.sh
 ```
+
+It stops any running instance first, launches detached, waits for all three
+ports and prints the URLs:
+
+```
+== Running
+   pid: 6604
+   plugins: Advanced API, Touch 'N' Stars, Three Point Polar Alignment
+
+   Touch-N-Stars:  http://192.168.1.36:5000
+   API:            http://192.168.1.36:1888/v2/api/version
+   Log:            /tmp/pins.log
+```
+
+```bash
+./start-pins.sh --foreground   # run in this terminal, log on screen
+./start-pins.sh --no-stop      # do not stop a running instance first
+```
+
+Starting without stopping the old instance is the failure worth avoiding:
+Kestrel cannot bind 4782, the new process aborts with a core dump, and the log
+shows a stack trace that says nothing about the real cause.
+
+### Run it as a service (recommended for the observatory machine)
+
+So PINS comes up on boot without anyone logging in:
+
+```bash
+mkdir -p ~/.config/systemd/user
+cp ~/pins-tooling/x64-port/pins.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now pins
+sudo loginctl enable-linger $USER     # survive logout — required on a headless box
+```
+
+```bash
+systemctl --user status pins
+systemctl --user restart pins
+journalctl --user -u pins -f
+```
+
+It is a **user** service, not a system one: PINS keeps its profile, logs and
+plugins under `~/.local/share/NINA` and needs no privilege, since the udev
+rules already give the camera mode 0666.
+
+The unit sends **SIGTERM** and allows 60 s, which is the graceful path that
+saves your profile, and uses `KillMode=control-group` so indiserver and the
+INDI drivers die with it rather than being orphaned.
+
+With the service enabled, use `systemctl --user restart pins` rather than the
+scripts, or the two will fight over the ports.
 
 ### Stop — always with the script
 

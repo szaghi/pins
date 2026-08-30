@@ -1,0 +1,72 @@
+# PINS as a systemd USER service — for the observatory machine, so it comes up
+# on boot without anyone logging in.
+#
+# Install:
+#   mkdir -p ~/.config/systemd/user
+#   cp pins.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now pins
+#
+# Survive logout (required on a headless box, or the service stops when your
+# SSH session ends):
+#   sudo loginctl enable-linger $USER
+#
+# Operate:
+#   systemctl --user status pins
+#   systemctl --user restart pins
+#   systemctl --user stop pins
+#   journalctl --user -u pins -f
+#
+# A USER service, not a system one, deliberately: PINS keeps its profile,
+# logs and plugins under ~/.local/share/NINA, and the udev rules give the
+# camera mode 0666, so it needs no privilege. Running it as root would put
+# those files somewhere else and gain nothing.
+
+[Unit]
+Description=PINS (PI 'N' Stars) astrophotography server
+Documentation=https://github.com/szaghi/pins
+# Equipment lives on USB and the API binds a socket, so wait for both.
+After=network-online.target
+Wants=network-online.target
+
+# Rate limit belongs in [Unit], not [Service]: systemd ignores it silently in
+# [Service] and the restart loop would be unbounded. Five attempts in five
+# minutes, then stay down so a real failure (a missing plugin, a held port) is
+# visible rather than hidden behind endless restarts.
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+
+# Adjust if you published elsewhere.
+WorkingDirectory=%h/pins-run
+ExecStart=%h/pins-run/NINA
+
+# SIGTERM is what PINS wants. Program.cs registers an ApplicationStopping
+# handler that disconnects equipment, runs INDIClient.CleanupServer (killing
+# its indiserver and removing /tmp/indiFIFO) and — critically — persists the
+# active profile. SIGKILL would silently discard every setting changed since
+# the last clean exit, so give it room to finish.
+KillSignal=SIGTERM
+TimeoutStopSec=60
+
+# Kill the whole cgroup on stop: PINS spawns indiserver, which spawns the
+# INDI drivers. An orphaned driver keeps holding its device name and makes the
+# next start appear to load the wrong one.
+KillMode=control-group
+
+# Restart on a crash, but never fight a deliberate stop.
+Restart=on-failure
+RestartSec=10
+
+
+# The .NET SDK is installed per-user by the setup script.
+Environment=DOTNET_CLI_TELEMETRY_OPTOUT=1
+
+# journalctl --user -u pins  gets everything.
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

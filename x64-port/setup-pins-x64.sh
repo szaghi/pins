@@ -158,6 +158,7 @@ pkgs_for_family() {
                  libgsl-dev libjpeg-dev libcurl4-gnutls-dev libtheora-dev \
                  libfftw3-dev libev-dev libudev-dev \
                  libicu-dev libraw-dev \
+                 nodejs npm \
                  curl rsync file
             ;;
         arch)
@@ -167,6 +168,7 @@ pkgs_for_family() {
                  libnova cfitsio libusb zlib gsl libjpeg-turbo curl libtheora \
                  fftw libev systemd-libs \
                  icu libraw \
+                 nodejs npm \
                  rsync file
             ;;
     esac
@@ -502,6 +504,64 @@ stage_plugins() {
 
     (( built > 0 )) || die "no plugins were deployed; PINS will have no API and no UI"
     info "deployed $built plugin(s)"
+
+    deploy_webapp "$plugin_root"
+}
+
+# The Touch-N-Stars .NET plugin is only the server half. The user interface is
+# a Vue app in the Touch-N-Stars submodule at the repo root, built with npm and
+# served as a static folder:
+#
+#   TouchNStarsServer.cs:30  webAppDir = Path.Combine(assemblyFolder, "app")
+#   TouchNStarsServer.cs:60  WebServer.WithStaticFolder("/", webAppDir, false)
+#
+# Without it the server answers but has nothing to serve, and the browser gets
+#   404 - Not Found ... EmbedIO.HttpException
+#   No module was able to serve the requested path.
+# which looks like a routing bug rather than a missing frontend.
+#
+# The csproj's own deploy step is a Windows-only xcopy, and package.json's
+# `testbuild` script targets %LOCALAPPDATA%, so neither helps us here.
+deploy_webapp() {
+    local plugin_root="$1"
+    local src="$PINS_SRC/Touch-N-Stars"       # the Vue submodule, not the plugin
+    local dest="$plugin_root/Touch-N-Stars/app"
+
+    if [[ ! -f "$src/package.json" ]]; then
+        warn "Touch-N-Stars web app sources not found at $src; submodule not checked out?"
+        warn "the API will work but the browser UI will 404"
+        return 0
+    fi
+
+    if ! command -v npm >/dev/null; then
+        warn "npm not found: cannot build the Touch-N-Stars web UI"
+        warn "install it (arch: pacman -S npm, debian: apt install npm) and re-run this stage"
+        return 0
+    fi
+
+    info "installing web app dependencies (npm ci)"
+    ( cd "$src" && npm ci --no-audit --no-fund ) || {
+        warn "npm ci failed; skipping the web UI"
+        return 0
+    }
+
+    # build:app skips the eslint pass that `build` runs first: linting is a
+    # contributor gate, and a style violation upstream should not stop an
+    # installer from producing a working UI.
+    info "building the web app (vue-cli-service)"
+    if ! ( cd "$src" && NODE_OPTIONS=--max-old-space-size=4096 npm run build:app ); then
+        warn "web app build failed; the API will work but the browser UI will 404"
+        return 0
+    fi
+
+    [[ -f "$src/dist/index.html" ]] || {
+        warn "$src/dist/index.html missing after build; skipping deploy"
+        return 0
+    }
+
+    mkdir -p "$dest"
+    rsync -a --delete "$src/dist/" "$dest/"
+    info "web UI -> $dest ($(du -sh "$dest" | cut -f1))"
 }
 
 # ------------------------------------------------------------ stage: external
@@ -661,6 +721,13 @@ stage_verify() {
                      -maxdepth 1 -name 'Touch-N-Stars*.dll' 2>/dev/null | head -1) ]] \
             && info "Touch-N-Stars plugin: present" \
             || warn "Touch-N-Stars plugin missing from $plugin_root"
+
+        # The plugin is only the server; the browser UI is a separate Vue
+        # build. Without it EmbedIO answers with a 404 that reads like a
+        # routing bug rather than a missing frontend.
+        [[ -f "$plugin_root/Touch-N-Stars/app/index.html" ]] \
+            && info "Touch-N-Stars web UI: present" \
+            || warn "Touch-N-Stars web UI missing: the browser will 404 on / (run the plugins stage)"
     else
         warn "cannot determine plugin folder version (no PINS source at $PINS_SRC)"
     fi

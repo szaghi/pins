@@ -560,3 +560,77 @@ the toupcam driver into its indiserver when the INDI camera is selected in the
 UI, so the native path wins on a plain startup. Both paths want exclusive USB
 access -- if `indi_toupcam_ccd` holds the camera open, native enumeration can
 fail, and vice versa. Worth remembering when a camera "disappears".
+
+## THE PLUGINS WERE NEVER BUILT (2026-08-30)
+
+The installer produced a PINS that ran perfectly and had **no user interface**.
+`verify` reported "All checks passed" for a build nobody could actually use.
+
+Root cause: `ninaAPI` and `Touch-N-Stars` are git submodules under
+`NINA.Plugins/`. Neither is in `NINA.sln`; neither is referenced by
+`NINA.csproj`. So `dotnet publish NINA/NINA.csproj` yields a complete,
+working binary with no API server. Per AGENTS.md the headless product's
+entire user surface is the Touch-N-Stars Vue app talking to the backend
+through ninaAPI, so without them there is nothing to drive.
+
+Symptoms, none of which look like a missing plugin:
+- nothing listening on port 1888 (`ss -tlnp | grep 1888` empty)
+- no `PluginLoader` lines anywhere in the log
+- `~/.local/share/NINA/Plugins/` does not exist at all
+- PINS otherwise starts, enumerates hardware and shuts down cleanly
+
+### Plugin folder location
+`Constants.cs:26` -> `UserExtensionsFolder = APPLICATIONTEMPPATH/Plugins/<ver>`,
+where `APPLICATIONTEMPPATH` is `LocalApplicationData/NINA` and `<ver>` is
+MAJOR.MINOR.BUILD. On Linux `LocalApplicationData` is `~/.local/share`, giving:
+
+```
+~/.local/share/NINA/Plugins/3.3.0/
+```
+
+### Layout: one subfolder per plugin, with its full dependency set
+`PluginAssemblyLoadContext` (`PluginLoader.cs:719-730`) resolves a plugin's
+dependencies from the directory of the plugin DLL itself, recursively. So each
+plugin gets its own subfolder containing everything it needs. This is why the
+entire `bin` directory is copied rather than just the plugin assembly, and why
+doing so cannot clobber PINS's own assemblies.
+
+```
+~/.local/share/NINA/Plugins/3.3.0/ninaAPI/         176 files, 53 MB
+~/.local/share/NINA/Plugins/3.3.0/Touch-N-Stars/   167 files, 47 MB
+```
+
+`EmbedIO.dll` + `Swan.Lite.dll` in the ninaAPI folder are the HTTP server
+serving port 1888.
+
+### Two traps when building them
+1. **Target framework must be pinned.** `ninaAPI.csproj` has a `net10.0`
+   ItemGroup that `ProjectReference`s the in-tree PINS projects, and a
+   `net8.0-windows` one that pulls NINA 3.2.0.9001 from NuGet instead. Build
+   with `-f net10.0` explicitly or the wrong configuration can be selected.
+2. **Touch-N-Stars' assembly is `TouchNStars.dll`**, not `Touch-N-Stars.dll`
+   (`AssemblyName` in its csproj differs from the folder name). A verify check
+   keyed on the folder name reports a present plugin as missing.
+
+### Verified working (2026-08-30)
+```
+$ ss -tlnp | grep 1888
+LISTEN 0 0 *:1888 *:* users:(("NINA",pid=32919,fd=386))
+
+$ curl -s http://localhost:1888/v2/api/equipment/camera/info
+{"Response":{...,"Connected":false},"Error":"","StatusCode":200,"Success":true,"Type":"API"}
+```
+
+`Connected:false` with zeroed fields is correct for an enumerated but
+unconnected camera.
+
+`verify` now returns rc=1 when ninaAPI is absent, so a PINS with no interface
+can never report "All checks passed" again.
+
+### ufw
+Port 1888 must be opened for anything but localhost to reach the UI, exactly
+as SSH needed:
+
+```bash
+sudo ufw allow from 192.168.1.0/24 to any port 1888 proto tcp
+```

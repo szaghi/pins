@@ -762,3 +762,106 @@ check depends on. Testing it and concluding "the WebSocket works" is a trap.
 ### Not a bug: the wizard skips step 4
 `SetupPage.vue:299` deliberately skips step 4 on non-mobile platforms -- it is
 an Android/iOS permission step. Jumping 3 -> 5 is correct.
+
+## FIRST LIGHT: ATR2600C EXPOSURE ON CACHYOS -- PASS (2026-08-30)
+
+End-to-end proof of the port: ToupTek SDK -> PINS -> image pipeline -> browser
+UI, on real hardware.
+
+### Camera connected, reporting real sensor geometry
+```
+Connected: True     XSize: 6224   YSize: 4168   PixelSize: 3.76
+GainMin: 100        GainMax: 10000              CanSetTemperature: True
+```
+6224x4168 at 3.76 um is the IMX571, 25.9 MP -- the actual ATR2600C sensor, not
+defaults.
+
+### Exposure
+```
+CameraVM.cs|Capture|752|Starting Exposure - Exposure Time: 2s;
+  Filter: ; Gain: 160; Offset 2000; Binning: 1x1;
+```
+No error followed, and `LastDownloadTime` moved from `-1` (never downloaded) to
+**0.2608029**.
+
+A 6224x4168 16-bit frame is ~52 MB, so 261 ms is roughly 200 MB/s: the camera
+negotiated **USB 3.0** properly. A frame taking seconds instead would indicate
+a USB 2.0 fallback, worth checking on the rig.
+
+### Notes for interpreting a manual snapshot
+- `/v2/api/image-history` stays empty: it records sequence frames, not manual
+  snapshots from the UI.
+- `/v2/api/image/0` returns HTTP 200 with a ~91 byte JSON error for the same
+  reason. Neither is a fault.
+- `LastDownloadTime` is the reliable signal that a manual capture completed.
+- Sensor read 38.1 C with the cooler off, normal for a TEC camera idling
+  indoors. Cooling is a separate check still to do.
+
+### Still outstanding
+- TEC cooler: set a target temperature and confirm it pulls down
+- The mount, added on its own so any failure has one candidate cause
+- The `StaleBlobDebounce` abort path (see below) -- note this applies ONLY to
+  the INDI camera route. The camera is currently connected through the native
+  ToupTek SDK, where that code is not involved, so testing it means
+  reconnecting the camera as an INDI device first.
+
+## OPENCV 4.11 IS UNUSABLE ON A MODERN DISTRO (2026-08-30)
+
+**Symptom:** the browser UI hangs forever after starting an exposure. The
+exposure itself completes -- `LastDownloadTime` updates -- but the API request
+never returns.
+
+**Cause:** `Camera.cs:606` writes a `temp.png` and reads it back through
+`System.Windows.Compat`'s `Bitmap(string)`, which is backed by `Cv2.ImRead`
+(`Drawing/Extensions.cs:115`). So **every ninaAPI image return goes through
+OpenCV**. The bundled `libOpenCvSharpExtern.so` from
+`OpenCvSharp4.official.runtime.linux-x64` **4.11.0.20250507** fails to dlopen,
+the call throws, and `CameraCapture` never completes.
+
+The library is present in the publish -- `ldd` is what reveals the problem:
+
+```
+libtesseract.so.4    not found      libavcodec.so.58   not found
+libgtk-x11-2.0.so.0  not found      libavformat.so.58  not found
+libgdk-x11-2.0.so.0  not found      libavutil.so.56    not found
+libtiff.so.5         not found      libswscale.so.5    not found
+libIlmImf-2_5.so.25  not found
+```
+
+Nine unresolved sonames, all obsolete. The NuGet runtime is built against
+Ubuntu 20.04-era libraries. On rolling Arch the majors have moved far past
+them: ffmpeg 63/61/10 vs 58/56/5, tiff 6 vs 5, tesseract 5.5.3 vs 4, OpenEXR
+long past 2.5, and **gtk2 has been dropped from the official repos entirely**.
+
+Installing the old versions is not a fix. The AUR has `libtiff5`, `openexr2`
+and `gtk2`, but **no `tesseract4` and no ffmpeg-4 package**, so the set cannot
+be completed -- and pinning five obsolete libraries on a rolling distro would
+be a permanent maintenance burden anyway.
+
+### The fix: bump to 4.13.0.20260627
+That release drops every problematic dependency. Its full `NEEDED` list is
+GTK **3**, cairo, pango, harfbuzz, freetype, glib, X11, drm and libstdc++ --
+all present on any desktop -- with the image codecs statically linked:
+
+```
+$ ldd libOpenCvSharpExtern.so   # 4.13, on CachyOS
+  (no "not found" lines)
+```
+
+Verified end to end on the quark: capture returns a JPEG, decoded to an
+800x536 mono image showing real sensor noise and hot pixels.
+
+`NINA/NINA.csproj` now pins 4.13.0.20260627 for both the managed
+`OpenCvSharp4` and the runtime package. The runtime line is conditioned on
+`linux-x64`, so Windows and arm64 builds are unaffected. Build: 0 errors.
+
+**This is the first and so far only source change the linux-x64 port has
+required.** Everything before it was tooling and packaging.
+
+### Note on the capture API
+`/v2/api/equipment/camera/capture?duration=N` returns immediately with
+`{"Response":"Capture started"}`. The image is fetched by a **second** call
+with `getResult=true`, which answers `{"Response":"Capture already in
+progress"}` until the frame is ready, then returns
+`{"Response":{"Image":"<base64 JPEG>"}}`. Firing overlapping capture requests
+makes it look stuck when it is not.

@@ -88,8 +88,21 @@
     <PackageReference Include="Parlot" Version="1.5.8" />
     <PackageReference Include="System.Data.SqlClient" Version="4.9.1" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.21" />
-    <PackageReference Include="OpenCvSharp4" Version="4.11.0.20250507" />
-    <PackageReference Include="OpenCvSharp4.official.runtime.$(RuntimeIdentifier)" Version="4.11.0.20250507" Condition="'$(RuntimeIdentifier)'=='linux-x64'" />
+    <!--
+      4.13 or newer is REQUIRED on Linux. The 4.11 native wrapper links nine
+      obsolete sonames - libtesseract.so.4, libavcodec/format/util/swscale from
+      ffmpeg 4, libtiff.so.5, libIlmImf-2_5.so.25 and GTK 2 - which no current
+      distribution ships; tesseract 4 and ffmpeg 4 are not even packaged in the
+      AUR. dlopen then fails, and because System.Windows.Compat's Bitmap(string)
+      is backed by Cv2.ImRead, every ninaAPI image return throws and the request
+      never completes, so the browser UI hangs after an exposure.
+
+      4.13 drops all of them: it needs only GTK 3 and common libraries, and
+      statically links the image codecs. Verified on CachyOS (rolling Arch) -
+      every dependency resolves and a capture returns a JPEG.
+    -->
+    <PackageReference Include="OpenCvSharp4" Version="4.13.0.20260627" />
+    <PackageReference Include="OpenCvSharp4.official.runtime.$(RuntimeIdentifier)" Version="4.13.0.20260627" Condition="'$(RuntimeIdentifier)'=='linux-x64'" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
     <!-- Exclude System.Drawing.Common as it conflicts with our compat library -->
     <PackageReference Include="System.Drawing.Common" Version="*" ExcludeAssets="all" />

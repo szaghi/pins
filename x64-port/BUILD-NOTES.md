@@ -412,3 +412,87 @@ identical despite GCC 16, .NET 10.0.302 and a rolling toolchain.
 - Touch-N-Stars over the LAN -- note ufw is active on this machine and its
   port must be opened, same as SSH was
 - ATR2600C on real USB: the first genuine hotplug test, impossible under WSL2
+
+## CachyOS RUNTIME TESTS -- PASS (2026-08-30)
+
+### Stage 1: PINS bare run (no hardware attached) -- PASS
+
+Deliberately run with nothing connected. Hardware would add variables that
+make a failure ambiguous: a crash with the camera plugged in could be the
+port, the udev rules, the driver, or the camera.
+
+- `Server fully initialized and running` **2 seconds** after launch
+- PINS spawned its own indiserver: `PID 30139, port: 7624, using FIFO:
+  /tmp/indiFIFO`, connected on attempt 1
+- SOFA and NOVAS loaded from `External/linux-x64/` -- the
+  `DllNotFoundException` that killed the first Ubuntu run does not recur
+- **`libtoupcam.so` loaded successfully**, reporting `Found 0 ToupTek
+  Cameras`: the ATR2600C native path is live, it simply has nothing to find
+- `USB Device Watcher started` -- genuinely new; impossible under WSL2
+- Ctrl-C after 90 s: all ten subsystems disconnected in order (Dome, Flat,
+  Camera, Telescope, Filter Wheel, Focuser, Rotator, Switch, Weather, Safety
+  Monitor), FIFO cleaned up, USB watcher stopped, no hang, no exit trace
+
+Bundled libraries that loaded: SOFA, NOVAS, ASI (libASICamera2, libEFWFilter,
+libEAFFocuser), ToupTek, Oasis, Nitecrawler, Wanderer -- matching the verified
+`pins.external` inventory exactly.
+
+Expected non-fatal `DllNotFoundException`s, one per vendor SDK not shipped in
+pins.external: Altair, Atik, QHY, Ogma, Omegon, NNcam, Mallincam, SVBony,
+PlayerOne, gphoto2. Each is caught per-provider in `CameraChooserVM` /
+`FilterWheelChooserVM` and the app continues. Noisy, not broken.
+
+### Stage 2: INDI simulators via test-indi-sim.sh -- PASS
+
+Run separately from PINS. They must not overlap: `KillExistingServer`
+(`INDIClient.cs:1485`) does a name-based `pkill -9 indiserver`, so PINS kills
+the test server on port 7625 too, despite the deliberate port/FIFO split.
+
+```
+indiserver -> /usr/sbin/indiserver
+indiserver running, PID 30307, port 7625, FIFO /tmp/indiFIFO-test
+received 31289 bytes of XML
+devices announced: "CCD Simulator", "Telescope Simulator"
+after CONNECTION=On: CCD_EXPOSURE CCD_INFO CCD_TEMPERATURE CCD_ABORT_EXPOSURE
+CCD1 is a BLOB vector (the image path PINS consumes)
+```
+
+`CCD1 is a BLOB vector` is the load-bearing check: that is the exact mechanism
+PINS consumes images through (`setBLOBVector` -> base64 -> `INDICamera.cs`).
+The lazy-property behavior noted on Ubuntu reproduces here -- `CCD_EXPOSURE`
+and `CCD1` are only defined *after* CONNECTION is switched On, so probing the
+initial dump reports them missing on a healthy server.
+
+### OPEN QUESTION: phantom Alpaca devices
+
+With no hardware attached, every device class reported exactly one Alpaca
+device:
+
+```
+Found 1 Alpaca Cameras / Telescopes / Focusers / Rotators / Domes
+Found 1 Alpaca Switch Hubs / Safety Monitors / Filter Wheels
+Found 1 Alpaca Cover Calibrators / Observing Conditions
+```
+
+Something is answering Alpaca discovery (UDP 32227). This is NOT a port
+problem -- it would behave identically on Ubuntu -- but it means PINS will
+offer phantom devices in the chooser. Identify the responder before trusting
+the device list on the rig:
+
+```bash
+ss -lunp | grep 32227
+curl -s http://localhost:11111/management/v1/description
+```
+
+### Still outstanding
+- ATR2600C attached: expect `Found 1 ToupTek Cameras`. This is the first real
+  USB hotplug test in the whole port and the one thing WSL2 could never do.
+- Mount attached, after the camera passes: one device at a time, so any
+  failure has exactly one candidate cause.
+- Touch-N-Stars over the LAN. ufw is active on this machine and its port must
+  be opened, the same way SSH was (`sudo ufw allow from 192.168.1.0/24 to any
+  port <port> proto tcp`).
+- Deliberate mid-sequence aborts with 52 MB frames, to exercise the 500 ms
+  `StaleBlobDebounce` window in `INDICamera.cs:38-46`. INDI's `setBLOBVector`
+  carries no per-exposure correlation id, so that debounce is a real code path
+  and nothing so far has touched it.

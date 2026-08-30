@@ -703,3 +703,62 @@ LISTEN 0 0 *:5000 *:*
 $ curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/
 200
 ```
+
+## PINS LISTENS ON THREE PORTS, NOT TWO (2026-08-30)
+
+A firewalled host needs **all three** opened or the UI loads but never becomes
+usable:
+
+| Port | Server | Purpose | Source |
+|---|---|---|---|
+| 1888 | ninaAPI (EmbedIO) | REST API, `/v2/api/...` | `ninaAPI Settings.Designer.cs:40` |
+| 5000 | Touch-N-Stars (EmbedIO) | the Vue UI at `/` | `TNS Settings.Designer.cs:52` |
+| **4782** | **PINS Kestrel** | **SignalR: notifications, progress, dialogs** | `NINA/Program.cs:28`, `appsettings.json:13` |
+
+```bash
+for p in 1888 5000 4782; do
+  sudo ufw allow from 192.168.1.0/24 to any port $p proto tcp
+done
+```
+
+### The symptom when only 4782 is blocked
+The UI loads and looks healthy. The setup wizard advances to step 5 (GPS),
+displays for a moment, then silently returns to the start. Nothing in the PINS
+log indicates a problem.
+
+`SetupPage.vue:305-318` waits 2.5 s at step 5 and calls `previousStep()` if
+`store.isBackendReachable` is false. That flag (`store.js:413-419`) requires
+**five** conditions:
+
+```
+isApiConnected && isTnsPluginConnected && isApiVersionNewerOrEqual
+  && isTnsPluginVersionNewerOrEqual && isWebSocketConnected
+```
+
+With 4782 blocked the first four pass and only the WebSocket fails, so the
+browser console shows three successes then the bounce:
+
+```
+TNS Plugin Version: 1.2.4.0
+api Port: 1888
+API Version: 2.2.15.0
+Backend not reachable
+[SignalRNotificationService] Connecting to SignalR at: http://<host>:4782/hubs/notifications   <- repeating forever
+```
+
+Diagnosing this from the shell is misleading: `ss -tln` shows 4782 LISTENing on
+`0.0.0.0`, and every curl from the quark itself succeeds. Only a connection
+*from the LAN* reveals it:
+
+```bash
+# on the quark -> works;  from another machine -> blocked
+bash -c 'cat < /dev/null > /dev/tcp/192.168.1.36/4782'
+```
+
+There is also a separate EmbedIO WebSocket at `ws://<host>:1888/v2/socket`
+which answers `101 Switching Protocols` and is NOT the one the reachability
+check depends on. Testing it and concluding "the WebSocket works" is a trap.
+
+### Not a bug: the wizard skips step 4
+`SetupPage.vue:299` deliberately skips step 4 on non-mobile platforms -- it is
+an Android/iOS permission step. Jumping 3 -> 5 is correct.

@@ -366,6 +366,7 @@ Three are built and deployed by the `plugins` stage:
 | Livestack | `Livestack` | live stacking |
 | Phd2 Tools | `Phd2 Tools` | PHD2 guiding helpers |
 | Hocus Focus | `Hocus Focus` | improved star detection and autofocus, plus an aberration inspector for backfocus and sensor tilt |
+| Orbuculum | `Orbuculum` | sequencer instructions for multi-target planning: loop on hour angle or altitude |
 
 They live in `~/.local/share/NINA/Plugins/3.0.0/`, one folder per plugin named
 after its *display* name, each with its full dependency set beside it.
@@ -377,9 +378,36 @@ the Touch-N-Stars polar alignment view consumes. Confirm it loaded:
 grep 'Successfully loaded plugin' ~/.local/share/NINA/Logs/*.log | tail -3
 ```
 
-That is every plugin in the fork that targets `net10.0`. Two are Windows-only
-and cannot be built here: `NINA.Joko.Plugin.TenMicron` (net8.0-windows7.0) and
-`nina.plugin.orbuculum` (net7.0-windows).
+That is every plugin in the fork that targets `net10.0`. One is Windows-only
+and cannot be built here: `NINA.Joko.Plugin.TenMicron` (net8.0-windows7.0).
+
+#### Trying another plugin
+
+`check-plugin.sh` answers whether a plugin can work on Linux before you invest
+in porting it:
+
+```bash
+./check-plugin.sh --list                          # every submodule and its targets
+./check-plugin.sh path/to/Plugin.csproj           # inspect one, and build it if it can
+```
+
+It checks four things: a plain `net10.0` target, whether NINA is referenced by
+project rather than NuGet, unconditional Windows packages, and how much XAML
+the plugin carries. On success it prints the exact command to deploy it:
+
+```bash
+EXTRA_PLUGINS="Display Name:path/to/Plugin.csproj" ./setup-pins-x64.sh plugins
+```
+
+`EXTRA_PLUGINS` lets you try a plugin without editing the installer. Once it
+proves useful, move that same string into the `for spec in` list in
+`stage_plugins` so every machine builds it.
+
+**Vendoring a plugin is not the work.** The ones that run were modified: a
+`net10.0` target added, NuGet references to NINA swapped for project
+references, and whatever Windows-only code that exposed fixed. Adding an
+unported plugin as a submodule gains nothing — it will simply fail to compile
+when you wire it up.
 
 Plugins from the **official repository** will not work: their manifests carry
 no platform field, the loader checks only version compatibility, and they are

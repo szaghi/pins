@@ -1219,7 +1219,7 @@ Checked every submodule's target framework:
 | LiveStack | `net10.0-windows;net10.0` | buildable, not deployed |
 | nina.plugin.phd2tools | `net10.0-windows;net10.0` | buildable, not deployed |
 | NINA.Joko.Plugin.TenMicron | `net8.0-windows7.0` | **no** |
-| nina.plugin.orbuculum | `net7.0-windows` | **no** |
+| nina.plugin.orbuculum | `net10.0-windows;net10.0` | deployed |
 
 Adding one is a single entry in the `for spec in` list in `stage_plugins`,
 formatted `"Display Name:path/to/plugin.csproj"`. The display name must match
@@ -1319,7 +1319,7 @@ target.** That is what distinguishes the ones in this fork.
 | LiveStack | `net10.0-windows;net10.0` | deployed (needed a newer submodule pin) |
 | joko.nina.plugins (Hocus Focus) | `net10.0-windows7.0;net10.0` | deployed |
 | NINA.Joko.Plugin.TenMicron | `net8.0-windows7.0` | **no** |
-| nina.plugin.orbuculum | `net7.0-windows` | **no** |
+| nina.plugin.orbuculum | `net10.0-windows;net10.0` | deployed |
 
 ### LiveStack: the submodule was simply behind
 It failed with two `CS1503` errors:
@@ -1406,3 +1406,53 @@ Phd2 Tools, Livestack, Hocus Focus
 That is every plugin in the fork that targets `net10.0`. The remaining two are
 Windows-only and cannot be built here: `NINA.Joko.Plugin.TenMicron`
 (net8.0-windows7.0) and `nina.plugin.orbuculum` (net7.0-windows).
+
+## ORBUCULUM, AND A MECHANISM FOR THE REST (2026-08-30)
+
+### I had Orbuculum wrong
+Earlier notes recorded it as `net7.0-windows` and unbuildable. That was read
+from **`Orbuculum.Test.csproj`**, the test project. The plugin itself,
+`Orbuculum/Orbuculum.csproj`, targets `net10.0-windows;net10.0` and builds with
+0 errors. It is now deployed.
+
+Lesson worth keeping: when checking whether a plugin targets Linux, skip
+anything matching `*[Tt]est*` — `check-plugin.sh --list` does.
+
+Orbuculum provides sequencer instructions for multi-target planning: loop the
+current target until a given hour angle or altitude, so an obstructed target
+can wait while another is imaged.
+
+### Seven plugins now load
+```
+Advanced API, Touch 'N' Stars, Three Point Polar Alignment,
+Phd2 Tools, Livestack, Hocus Focus, Orbuculum
+```
+That is every `net10.0`-capable plugin in the fork. Only
+`NINA.Joko.Plugin.TenMicron` (net8.0-windows7.0) remains unbuildable.
+
+### check-plugin.sh
+The official repository has **96 unique plugins** (364 manifest entries).
+Seven work here. The other 89 are Windows builds and cannot be installed: the
+manifests carry no platform field, `PluginLoader` checks only version
+compatibility, and the archives are `net8.0-windows`.
+
+Vendoring them into the fork would not help. The seven that run were
+**modified** -- a `net10.0` target added, NuGet `PackageReference`s to NINA.*
+replaced with `ProjectReference`s to the in-tree projects (20 of them for
+ninaAPI), and Windows-only code fixed. An unported submodule is 25 MB of clone
+that fails to compile the moment it is wired up.
+
+So `check-plugin.sh` measures the gap instead:
+
+| Check | Why |
+|---|---|
+| plain `net10.0` target | a `*-windows` target alone pulls in WPF |
+| ProjectReference vs NuGet | the Linux build must use the in-tree projects |
+| unconditional Windows packages | fine if guarded by `IsOSPlatform`, fatal otherwise |
+| XAML file count | dockable views will not appear in Touch-N-Stars |
+
+Then it builds, and on success prints the ready-made `EXTRA_PLUGINS` line.
+
+`EXTRA_PLUGINS` in `stage_plugins` accepts `"Display Name:path.csproj"` entries
+so a plugin can be tried without editing the installer. Verified against
+Orbuculum (buildable) and TenMicron (correctly reports all four blockers).

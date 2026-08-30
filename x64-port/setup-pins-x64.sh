@@ -347,12 +347,34 @@ indi_toupbase_from_source() {
     )
     sudo ldconfig
 
+    # indi-toupbase builds one driver per ToupTek OEM rebrand -- Altair,
+    # Bresser, Mallincam, Meadecam, NNcam, Ogmacam, Omegon, StarshootG,
+    # SVBony, Teleskop -- and every one defaults to On with a REQUIRED
+    # find_package for its own vendor SDK. We install only libtoupcam, so the
+    # configure step dies on the first missing one:
+    #
+    #   CMake Error at cmake_modules/FindALTAIRCAM.cmake:43 (message):
+    #     Altaircam not found.  Please install Altaircam Library
+    #
+    # Turn the other ten off rather than installing ten SDKs for cameras we do
+    # not own. WITH_TOUPCAM stays On and yields indi_toupcam_ccd.
     mkdir -p "$WORK/build-toupbase"
     (
         cd "$WORK/build-toupbase"
         cmake -DCMAKE_INSTALL_PREFIX="$prefix" \
               -DCMAKE_BUILD_TYPE=Release \
               -DFIX_WARNINGS=OFF \
+              -DWITH_TOUPCAM=On \
+              -DWITH_ALTAIRCAM=Off \
+              -DWITH_BRESSERCAM=Off \
+              -DWITH_MALLINCAM=Off \
+              -DWITH_MEADECAM=Off \
+              -DWITH_NNCAM=Off \
+              -DWITH_OGMACAM=Off \
+              -DWITH_OMEGONPROCAM=Off \
+              -DWITH_STARSHOOTG=Off \
+              -DWITH_SVBONYCAM=Off \
+              -DWITH_TSCAM=Off \
               "$WORK/indi-3rdparty/indi-toupbase"
         make -j"$(nproc)"
         sudo make install

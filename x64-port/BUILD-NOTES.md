@@ -496,3 +496,67 @@ curl -s http://localhost:11111/management/v1/description
   `StaleBlobDebounce` window in `INDICamera.cs:38-46`. INDI's `setBLOBVector`
   carries no per-exposure correlation id, so that debounce is a real code path
   and nothing so far has touched it.
+
+## ATR2600C HARDWARE ENUMERATION -- PASS (2026-08-30)
+
+The first real USB hotplug test of the whole port, and the one thing WSL2
+could never do.
+
+```
+Found 1 ToupTek Cameras
+Found 1 ToupTek Devices        <- the camera's integrated filter wheel
+```
+
+### Identifying the camera on the bus
+`lsusb` reports it as:
+
+```
+Bus 002 Device 007: ID 0547:13da Anchor Chips, Inc. USB3.0 Camera
+```
+
+**Do not grep lsusb for "touptek".** ToupTek-family cameras identify by their
+Cypress/Anchor USB controller (VID `0547`, sometimes `04b4`), not by any brand
+string, so a brand-name grep finds nothing on a perfectly healthy device.
+
+### udev
+`libtoupcam`'s `99-toupcam.rules` covers exactly those two vendor IDs:
+
+```
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0547", MODE="0666"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="04b4", MODE="0666"
+```
+
+The file's own comment says to copy it to `/etc/udev/rules.d`, but the CMake
+install puts it in `/usr/lib/udev/rules.d/` and that is sufficient on modern
+systemd -- both are search paths. Verified in effect:
+
+```
+$ ls -l /dev/bus/usb/002/007
+crw-rw-rw- 1 root root 189, 134 Aug 30 11:07
+```
+
+`crw-rw-rw-` (0666) is the check that matters; `crw-rw-r--` would mean the
+rule did not apply and PINS could not open the device without root.
+
+### indi_toupcam_ccd also works
+```
+HotPlugManager: ToupbaseCCDHotPlugHandler initialized.
+HotPlugManager: udev monitor initialized successfully (callback ID: 0).
+```
+
+That is `INDI::HotPlugManager` -- the API that exists only in INDI >= 2.x and
+is the entire reason Ubuntu needs a source build. On Arch it came free with
+`extra/libindi` 2.2.4.2.
+
+### Two independent paths to the same camera
+
+| Path | Mechanism | PINS counter |
+|---|---|---|
+| Native SDK | `External/linux-x64/ToupTek/libtoupcam.so` in-process | `ToupTek Cameras` |
+| INDI | `indi_toupcam_ccd` over TCP 7624 | `INDI Cameras` |
+
+`Found 0 INDI Cameras` with the camera attached is CORRECT: PINS only loads
+the toupcam driver into its indiserver when the INDI camera is selected in the
+UI, so the native path wins on a plain startup. Both paths want exclusive USB
+access -- if `indi_toupcam_ccd` holds the camera open, native enumeration can
+fail, and vice versa. Worth remembering when a camera "disappears".

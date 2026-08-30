@@ -142,6 +142,12 @@ pm_staleness_check() {
 
 # The same logical dependency has a different name in each family.
 # Arch bundles headers with the library, hence no -dev counterparts.
+#
+# icu is a PINS runtime dependency, not an INDI build one: NINA.csproj does not
+# set InvariantGlobalization, so .NET needs ICU at startup. It is present on
+# almost every desktop install, and when it is absent the failure is a
+# globalization exception that gives no hint a package is missing -- so list it
+# explicitly rather than relying on it being pulled in by something else.
 pkgs_for_family() {
     case "$DISTRO_FAMILY" in
         debian)
@@ -149,6 +155,7 @@ pkgs_for_family() {
                  libnova-dev libcfitsio-dev libusb-1.0-0-dev zlib1g-dev \
                  libgsl-dev libjpeg-dev libcurl4-gnutls-dev libtheora-dev \
                  libfftw3-dev libev-dev libudev-dev \
+                 libicu-dev \
                  curl rsync file
             ;;
         arch)
@@ -157,6 +164,7 @@ pkgs_for_family() {
             echo base-devel cmake git git-lfs pkgconf \
                  libnova cfitsio libusb zlib gsl libjpeg-turbo curl libtheora \
                  fftw libev systemd-libs \
+                 icu \
                  rsync file
             ;;
     esac

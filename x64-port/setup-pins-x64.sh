@@ -74,7 +74,16 @@ Options:
                          (default: \$HOME/pins-build)
   -p, --publish-dir DIR  where the PINS publish tree lands
                          (default: \$HOME/pins-run)
+  -R, --pins-repo URL    PINS repository to clone
+                         (default: upstream nitr57/pins)
+  -B, --pins-branch REF  branch to build
+                         (default: develop)
   -h, --help             this text
+
+The repo/branch defaults point at UPSTREAM. To build your own fork pass
+--pins-repo and --pins-branch, and note that an existing clone under
+--work-dir is reused as-is rather than re-cloned; the pins stage prints the
+remote, branch and commit it is actually building, so check that line.
 
 Environment overrides (flags win):
   INDI_VERSION PINS_REPO PINS_BRANCH EXTERNAL_REPO DOTNET_VERSION
@@ -407,11 +416,26 @@ stage_pins() {
 
     # -- source ------------------------------------------------------------
     if [[ ! -d "$PINS_SRC/.git" ]]; then
-        info "cloning PINS ($PINS_BRANCH)"
+        info "cloning $PINS_REPO ($PINS_BRANCH)"
         git clone --recurse-submodules --branch "$PINS_BRANCH" "$PINS_REPO" "$PINS_SRC"
     else
-        info "PINS already cloned at $PINS_SRC"
+        info "PINS already cloned at $PINS_SRC (not re-cloning)"
     fi
+
+    # Always report what is actually about to be built. The defaults point at
+    # UPSTREAM develop, so a run that forgets PINS_REPO/PINS_BRANCH silently
+    # builds someone else's tree -- and an existing clone is reused as-is, so
+    # even a "clean" work dir can be stale. Both failures look like the build
+    # ignoring your changes rather than building a different source.
+    (
+        cd "$PINS_SRC"
+        local head branch origin
+        head=$(git log --oneline -1 2>/dev/null)
+        branch=$(git branch --show-current 2>/dev/null)
+        origin=$(git remote get-url origin 2>/dev/null)
+        info "building: ${origin:-unknown}"
+        info "  branch: ${branch:-<detached HEAD>}   commit: ${head:-unknown}"
+    )
 
     (
         cd "$PINS_SRC"
@@ -718,6 +742,31 @@ stage_verify() {
         fi
     done
 
+    # OpenCV sits in the publish root, not under External, and is easy to miss
+    # because PINS starts and captures perfectly without it. But
+    # System.Windows.Compat's Bitmap(string) is backed by Cv2.ImRead, so every
+    # ninaAPI image return goes through it: when it cannot load, the request
+    # never completes and the browser UI hangs after an exposure with nothing
+    # useful in the log.
+    #
+    # The 4.11 runtime package links nine sonames no current distro ships
+    # (tesseract 4, ffmpeg 4, tiff 5, OpenEXR 2.5, GTK 2). 4.13 or newer is
+    # required; see the comment on the PackageReference in NINA/NINA.csproj.
+    local ocv="$PUBLISH/libOpenCvSharpExtern.so"
+    if [[ -f "$ocv" ]]; then
+        local ocv_missing
+        ocv_missing=$(ldd "$ocv" 2>/dev/null | grep 'not found' | awk '{print $1}' | paste -sd' ')
+        if [[ -n "$ocv_missing" ]]; then
+            warn "libOpenCvSharpExtern.so cannot load, missing: $ocv_missing"
+            warn "the UI will hang after an exposure; needs OpenCvSharp >= 4.13 (check NINA.csproj)"
+            rc=1
+        else
+            info "libOpenCvSharpExtern.so OK (all deps resolve)"
+        fi
+    else
+        warn "libOpenCvSharpExtern.so missing from $PUBLISH"; rc=1
+    fi
+
     # -- plugins -----------------------------------------------------------
     # Without ninaAPI there is no HTTP server and therefore no user interface,
     # which is easy to miss because PINS itself starts and runs perfectly.
@@ -773,6 +822,14 @@ main() {
                 PUBLISH="$2"; shift 2 ;;
             --work-dir=*)    WORK="${1#*=}";    shift ;;
             --publish-dir=*) PUBLISH="${1#*=}"; shift ;;
+            -R|--pins-repo)
+                [[ ${2:-} ]] || die "--pins-repo needs a URL"
+                PINS_REPO="$2"; shift 2 ;;
+            -B|--pins-branch)
+                [[ ${2:-} ]] || die "--pins-branch needs a branch name"
+                PINS_BRANCH="$2"; shift 2 ;;
+            --pins-repo=*)   PINS_REPO="${1#*=}";   shift ;;
+            --pins-branch=*) PINS_BRANCH="${1#*=}"; shift ;;
             -*) die "unknown option '$1' (see --help)" ;;
             *)
                 [[ -z "$stage" ]] || die "more than one stage given: '$stage' and '$1'"

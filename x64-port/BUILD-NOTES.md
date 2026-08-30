@@ -865,3 +865,46 @@ with `getResult=true`, which answers `{"Response":"Capture already in
 progress"}` until the frame is ready, then returns
 `{"Response":{"Image":"<base64 JPEG>"}}`. Firing overlapping capture requests
 makes it look stuck when it is not.
+
+## THE INSTALLER DEFAULTS TO UPSTREAM, NOT YOUR FORK (2026-08-30)
+
+A "from scratch" rebuild reproduced the OpenCV hang even though the fix was
+committed and pushed, because `stage_pins` cloned **upstream nitr57/pins
+branch develop** -- the defaults -- which does not carry the fix:
+
+```
+$ cd ~/pins-build-clean/pins && git log --oneline -1
+75e49f03e INDI Telescope: goto home pos fix        <- upstream, not the fork
+$ grep OpenCvSharp4\" NINA/NINA.csproj
+  Version="4.11.0.20250507"                        <- the broken one
+```
+
+Two ways this bites:
+1. Forgetting `PINS_REPO`/`PINS_BRANCH` silently builds someone else's tree.
+2. An **existing** clone under `--work-dir` is reused as-is and never updated,
+   so even a fresh-looking work dir can be stale.
+
+Both look like "the build ignored my changes" rather than "the build used a
+different source".
+
+Fixes applied:
+- `-R/--pins-repo` and `-B/--pins-branch` flags, so the override does not
+  depend on getting env-var placement right.
+- The pins stage now always prints the remote, branch and commit it is
+  actually building.
+
+To build the fork:
+```bash
+./setup-pins-x64.sh -R git@github.com:szaghi/pins.git -B linux-x64 \
+    --work-dir ~/pins-build --publish-dir ~/pins-run all
+```
+
+### verify now catches a broken OpenCV
+It sits in the publish root rather than under `External/`, and PINS starts and
+captures perfectly without it -- only the image *return* breaks. `verify` now
+runs `ldd` on it and fails with the specific missing sonames plus the fix:
+
+```
+WARN libOpenCvSharpExtern.so cannot load, missing: libtesseract.so.4 ...
+WARN the UI will hang after an exposure; needs OpenCvSharp >= 4.13
+```

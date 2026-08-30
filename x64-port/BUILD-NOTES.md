@@ -320,3 +320,95 @@ The INDI 2.2.4.2 source build in `x64-port/indi-build/indi-core/build` reached
 100% but `sudo make install` never ran, and `~/pins-build` / `~/pins-run` did
 not survive the reboot. The build tree itself did; an incremental `make`
 confirmed nothing was left to compile.
+
+## CachyOS (quark) RUNTIME VERIFICATION -- PASS (2026-08-30)
+
+Target: quark mini laptop, CachyOS (Arch, rolling), 4 cores, GCC 16.2.1.
+Full pipeline from a bare machine to `All checks passed` in ~20 minutes,
+**zero source changes**, same as on Ubuntu.
+
+```
+indiserver: /usr/sbin/indiserver
+toupbase driver: /usr/sbin/indi_toupcam_ccd
+simulators: present
+PINS binary: ELF 64-bit LSB pie executable, x86-64
+runs: NINA 3.3.0.1053-nightly
+SOFA/libsofa_c.so OK (424896 bytes)
+NOVAS/libnovas_c.so OK (209704 bytes)
+ToupTek/libtoupcam.so OK (60638712 bytes)
+USB subsystem present
+```
+
+### The Arch path is dramatically cheaper than Ubuntu's
+
+`cachyos-extra-v3/libindi` is **2.2.4.2** -- the identical version we build
+from source on Ubuntu. The ~30 min INDI core build and the `FIX_WARNINGS=OFF`
+GCC workaround are an *Ubuntu* problem (24.04 ships indi-bin 1.9.9), not a
+Linux one. On Arch the core is a 5.4 MiB package download.
+
+Stage timings on 4 cores:
+
+| Stage | Time | Notes |
+|---|---|---|
+| deps | ~2 min | 10 packages + libindi (4 more) |
+| indi | ~4 min | no core build; 221 MiB indi-3rdparty clone dominates |
+| pins | ~6 min | .NET SDK 236 MB, PINS clone ~900 MB with submodules |
+| external | ~1 min | pins.external LFS, 128 MiB |
+
+**The linux-x64 build produced 0 errors and 426 warnings -- the exact same
+warning count as the Ubuntu build.** Strong evidence the two are behaviorally
+identical despite GCC 16, .NET 10.0.302 and a rolling toolchain.
+
+### Three defects this run exposed
+
+1. **indi-toupbase builds every ToupTek OEM rebrand.** `indi-toupbase`'s
+   CMakeLists calls `build_touptek_driver` for Altair, Bresser, Mallincam,
+   Meadecam, NNcam, Ogmacam, Omegon, StarshootG, SVBony and Teleskop, each
+   defaulting to `On` with a `REQUIRED` find_package for its own vendor SDK.
+   We install only libtoupcam, so configure dies:
+
+   ```
+   CMake Error at cmake_modules/FindALTAIRCAM.cmake:43 (message):
+     Altaircam not found.  Please install Altaircam Library
+   ```
+
+   Fixed by passing `-DWITH_<BRAND>=Off` for the other ten. This was NOT an
+   Arch quirk -- it would fail identically on Ubuntu; the 2026-08-26 session
+   was interrupted by a reboot before `stage_indi` ever reached toupbase.
+
+2. **libraw was missing.** PINS uses LibRaw for DSLR raw decoding. On Ubuntu
+   it arrived incidentally with the other -dev packages; nothing pulls it in
+   on Arch, so `link_system libraw.so` warned. `extra/libraw` 0.22.2 provides
+   `libraw.so.25`. Added to both dependency lists.
+
+3. **The duplicate-indiserver check never ran.** It used `command -v -a`,
+   whose `-a` flag is a zsh/dash extension that bash's builtin rejects, so the
+   check silently found nothing. Now `type -aP`, with each hit resolved via
+   `readlink -f` before comparison -- necessary because Arch symlinks
+   `/usr/sbin` to `/usr/bin`, which would otherwise report one binary twice
+   and warn about a conflict that does not exist. Verified against three
+   cases: merged sbin (no warning), two genuine binaries (warns), single
+   install (no warning).
+
+### Arch package notes
+- All 21 package names verified against the archlinux.org API.
+- Arch bundles headers with libraries: no `-dev` counterparts.
+- `systemd-libs` provides libudev; `curl` provides libcurl.
+- `base-devel` is a group, so `pacman -Qq base-devel` always fails and it
+  lands in the "missing" list every run; `--needed` makes that a no-op.
+- `icu` is listed explicitly: NINA.csproj does not set
+  `InvariantGlobalization`, so .NET needs ICU at startup and its absence is a
+  globalization exception that gives no hint a package is missing.
+- Arch cfitsio ships both `libcfitsio.so` and `.so.10`, so the symlink step is
+  a harmless no-op there rather than load-bearing as on Ubuntu.
+- The installer never runs `pacman -Sy`: a refresh without an upgrade
+  desynchronizes the sync DB from the installed set (classic partial-upgrade
+  breakage). Preflight warns if the DB is more than 14 days old instead.
+
+### Still to do on the quark
+- `test-indi-sim.sh` against the simulators
+- 90 s `./NINA` run, checking clean startup and shutdown through every
+  subsystem (544 log lines on Ubuntu)
+- Touch-N-Stars over the LAN -- note ufw is active on this machine and its
+  port must be opened, same as SSH was
+- ATR2600C on real USB: the first genuine hotplug test, impossible under WSL2

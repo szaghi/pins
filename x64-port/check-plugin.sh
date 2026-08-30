@@ -24,6 +24,19 @@ warn() { printf '\033[1;33m   WARN %s\033[0m\n' "$*"; }
 bad()  { printf '\033[1;31m   NO   %s\033[0m\n' "$*"; }
 good() { printf '\033[1;32m   OK   %s\033[0m\n' "$*"; }
 
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    sed -n '2,14p' "$0" | sed 's/^# \?//'
+    echo
+    echo "Options:"
+    echo "  -l, --list     list every plugin submodule in the fork and its targets"
+    echo "  -h, --help     this text"
+    echo
+    echo "Read the 'exports' line first: a plugin whose only functional export"
+    echo "is IDockableVM will load but be unreachable on a headless PINS."
+    echo "See PLUGINS.md."
+    exit 0
+fi
+
 if [[ "${1:-}" == "--list" || "${1:-}" == "-l" ]]; then
     log "Plugin submodules in the fork"
     for d in "$PINS_SRC"/NINA.Plugins/*/; do
@@ -107,7 +120,38 @@ else
     good "no XAML — pure logic, the easy case"
 fi
 
-# -- 5. try it ----------------------------------------------------------------
+# -- 5. is it reachable at all? -----------------------------------------------
+# The decisive question, and the one a build cannot answer. PINS is headless:
+# the WPF shell never runs, so a plugin whose only export is IDockableVM loads
+# successfully and is then unreachable -- Touch-N-Stars cannot render a WPF
+# dockable, and there is no API to drive it.
+#
+# A plugin is useful here if it does at least one of:
+#   ISequenceItem / SequenceItem  -- sequencer instructions, driven by the API
+#   IDockableVM + a Vue counterpart in Touch-N-Stars (TPPA works this way)
+#   hooks into a NINA subsystem that runs regardless of UI (Hocus Focus does
+#     star detection and autofocus, which the imaging path calls anyway)
+exports=$(grep -rhoE 'Export\(typeof\([A-Za-z]+' "$dir" --include=*.cs 2>/dev/null \
+          | sed 's/.*(//' | sort -u | tr '\n' ' ')
+seqitems=$(grep -rlE 'ISequenceItem|: *SequenceItem|SequenceContainer' "$dir" \
+           --include=*.cs 2>/dev/null | wc -l)
+info "exports: ${exports:-none found}"
+info "sequencer-item files: $seqitems"
+
+if (( seqitems > 0 )); then
+    good "has sequencer instructions — drivable through the API"
+elif [[ "$exports" == *"IDockableVM"* ]]; then
+    warn "the only functional export is IDockableVM: a WPF dockable panel"
+    warn "it will LOAD but be unreachable — Touch-N-Stars cannot render it,"
+    warn "and there is no API surface to drive it. Porting the build gets you"
+    warn "a plugin that does nothing visible."
+    warn "Useful only if you also write a Touch-N-Stars view for it."
+    verdict=1
+elif [[ -z "$exports" ]]; then
+    warn "no MEF exports found — check how this plugin is meant to hook in"
+fi
+
+# -- 6. try it ----------------------------------------------------------------
 if (( verdict == 0 )); then
     [[ -x "$DOTNET_ROOT/dotnet" ]] && export PATH="$DOTNET_ROOT:$PATH"
     export DOTNET_CLI_TELEMETRY_OPTOUT=1

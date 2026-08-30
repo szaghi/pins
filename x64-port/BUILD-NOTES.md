@@ -1,6 +1,6 @@
 # PINS linux-x64 port — build notes
 
-> **Installing on a new machine? Read [`INSTALL.md`](INSTALL.md) instead.**
+> **Start at [`README.md`](README.md).** Installing a new machine? [`INSTALL.md`](INSTALL.md). Plugins? [`PLUGINS.md`](PLUGINS.md).
 > That is the step-by-step procedure, with troubleshooting and profile setup.
 > This file is the evidence log: what was tried, what failed, and why each
 > decision in the installer is the way it is. Kept chronological on purpose —

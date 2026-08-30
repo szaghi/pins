@@ -1,5 +1,11 @@
 # PINS linux-x64 port — build notes
 
+> **Installing on a new machine? Read [`INSTALL.md`](INSTALL.md) instead.**
+> That is the step-by-step procedure, with troubleshooting and profile setup.
+> This file is the evidence log: what was tried, what failed, and why each
+> decision in the installer is the way it is. Kept chronological on purpose —
+> the dated sections are the record that makes odd choices defensible later.
+
 ## Baseline
 - Fork: `szaghi/pins` (origin), upstream `nitr57/pins`
 - Branch: `linux-x64`

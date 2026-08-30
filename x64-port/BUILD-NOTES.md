@@ -1226,3 +1226,58 @@ formatted `"Display Name:path/to/plugin.csproj"`. The display name must match
 the plugin's `AssemblyTitle`, not the project or assembly name -- that is the
 folder the official plugin repository would install into, and the folder the
 running assembly resolves its own resources from.
+
+## ASTAP PLATE SOLVER (2026-08-30)
+
+Needed by TPPA (which solves each of its three points), framing and centering.
+PINS defaults `PlateSolverType` to ASTAP but leaves `ASTAPLocation` empty, so a
+fresh profile fails at the first solve.
+
+### Why the upstream .deb rather than the AUR
+- `aur/astap-bin` is 2023.09.11 with **zero votes** — effectively abandoned.
+- `aur/astap` builds from source through **Lazarus**, a Pascal IDE toolchain:
+  a large makedepend and a build-time risk on a rolling distro.
+- The upstream `.deb` (7 MB, CLI-2026.07.30) extracts with `ar` + `tar` and
+  installs identically on Arch and Debian, with no AUR helper.
+
+### Use astap_cli, not the GUI binary
+```
+astap      -> ELF, dynamic, needs Qt5
+astap_cli  -> ELF, STATICALLY linked, 0 unresolved libraries
+```
+On a headless rig the static CLI is one less thing to break on a distro update.
+`PlateSolveSettings-ASTAPLocation` is set to `/opt/astap/astap_cli`.
+
+### Database file extension differs by format
+The verify check originally globbed `*.290` and reported **"star database: 0
+files, 1.3G total"** on a perfectly good install — the size was right, the count
+was nonsense.
+
+| Series | Extension | d80 |
+|---|---|---|
+| D-series (d05/d20/d50/d80) | `*.1476` | 1476 files |
+| H-series (h17/h18) | `*.290` | — |
+
+`.290` is the older H-series format. `astap_db_count()` now matches both.
+
+Sizes and usable fields, from hnsky.org:
+
+| DB | Size | Reliable field |
+|---|---|---|
+| d05 | 100 MB | 0.6–10° |
+| d20 | 400 MB | 0.3–10° |
+| d50 | 900 MB | 0.2–10° |
+| **d80** | **1.2 GB** | **0.15–10°** — installer default, override with `ASTAP_DB` |
+
+Databases are hosted on SourceForge, not hnsky.org:
+`https://sourceforge.net/projects/astap-program/files/star_databases/<db>_star_database.deb/download`
+
+### Verified on the quark
+```
+astap_cli: /opt/astap/astap_cli
+star database: 1476 file(s)
+== All checks passed
+$ /opt/astap/astap_cli
+ASTAP astrometric solver version CLI-2026.07.30
+```
+A solve against real sky is still untested — that needs stars.

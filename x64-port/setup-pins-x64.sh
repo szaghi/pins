@@ -680,6 +680,13 @@ deploy_webapp() {
 ASTAP_DB="${ASTAP_DB:-d80}"
 ASTAP_PREFIX="${ASTAP_PREFIX:-/opt/astap}"
 
+# Count installed star-database files. D-series (d05/d20/d50/d80) uses *.1476,
+# the older H-series (h17/h18) *.290; count both so either satisfies the check.
+astap_db_count() {
+    find "$ASTAP_PREFIX" -maxdepth 1 -type f \( -name '*.1476' -o -name '*.290' \) \
+        2>/dev/null | wc -l
+}
+
 stage_astap() {
     log "Stage: ASTAP plate solver (database: $ASTAP_DB)"
 
@@ -712,9 +719,12 @@ stage_astap() {
     fi
 
     # -- the star database --------------------------------------------------
-    # ASTAP looks for *.290 files beside the binary.
-    if compgen -G "$ASTAP_PREFIX/*.290" >/dev/null 2>&1; then
-        info "star database already present: $(ls "$ASTAP_PREFIX"/*.290 2>/dev/null | wc -l) files"
+    # ASTAP looks for its database files beside the binary. The extension
+    # depends on the format: the D-series (d05/d20/d50/d80) ships *.1476,
+    # while the older H-series (h17/h18) uses *.290. Match both, or a healthy
+    # 1.3 GB install reports "0 files".
+    if astap_db_count >/dev/null && (( $(astap_db_count) > 0 )); then
+        info "star database already present: $(astap_db_count) files"
         return 0
     fi
 
@@ -740,7 +750,7 @@ stage_astap() {
         [[ -n "$src" ]] || die "unexpected database .deb layout"
         sudo cp -a "$src/." "$ASTAP_PREFIX/"
     )
-    info "star database: $(ls "$ASTAP_PREFIX"/*.290 2>/dev/null | wc -l) files, $(du -sh "$ASTAP_PREFIX" | cut -f1) total"
+    info "star database: $(astap_db_count) files, $(du -sh "$ASTAP_PREFIX" | cut -f1) total"
 }
 
 stage_external() {
@@ -950,11 +960,11 @@ stage_verify() {
     if [[ -x "$ASTAP_PREFIX/astap_cli" ]]; then
         info "astap_cli: $ASTAP_PREFIX/astap_cli"
         local ndb
-        ndb=$(compgen -G "$ASTAP_PREFIX/*.290" 2>/dev/null | wc -l)
+        ndb=$(astap_db_count)
         if (( ndb > 0 )); then
             info "star database: $ndb file(s)"
         else
-            warn "ASTAP has no star database (*.290); every plate solve will fail"
+            warn "ASTAP has no star database (*.1476 or *.290); every plate solve will fail"
             rc=1
         fi
     else

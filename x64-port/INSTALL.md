@@ -160,7 +160,7 @@ A good result, exit code 0:
    Touch-N-Stars web UI: present
    Three Point Polar Alignment: present
    astap_cli: /opt/astap/astap_cli
-   star database: 290 file(s)
+   star database: 1476 file(s)
    USB subsystem present
 
 == All checks passed
@@ -389,8 +389,11 @@ ASTAP does nothing without one. Pick by the narrowest field you will solve:
 | `d50` | 900 MB | 0.2–10° |
 | **`d80`** | **1.2 GB** | **0.15–10°** — the installer default |
 
-Override with `ASTAP_DB=d50` before running the stage. The files are `*.290`
-and live beside the binary in `/opt/astap`.
+Override with `ASTAP_DB=d50` before running the stage. The files live beside
+the binary in `/opt/astap`. Note the extension differs by format: the D-series
+installs `*.1476` (1476 files for d80), while the older H-series (h17/h18) uses
+`*.290` — a check that looks only for `.290` reports "0 files" on a perfectly
+good 1.3 GB install.
 
 ### 6.6 Cooling ramp
 
@@ -679,8 +682,8 @@ curl -s "http://$H:1888/v2/api/equipment/camera/list-devices"
 TPPA solves each of its three points, so a broken solver stops it immediately.
 
 ```bash
-ls -l /opt/astap/astap_cli          # the binary
-ls /opt/astap/*.290 | wc -l         # the star database
+ls -l /opt/astap/astap_cli                     # the binary
+ls /opt/astap/*.1476 /opt/astap/*.290 2>/dev/null | wc -l   # the database
 curl -s "http://$H:1888/v2/api/profile/show?active=true" \
   | grep -o '"ASTAPLocation":"[^"]*"'
 ```

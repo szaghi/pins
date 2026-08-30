@@ -1126,3 +1126,50 @@ Confirming the SDK is healthy, independent of PINS:
 
 That binary talks straight to libtoupcam with no PINS involved, so a pass there
 narrows any remaining fault to PINS or the device id.
+
+## stop-pins.sh -- clean shutdown (2026-08-30)
+
+`x64-port/stop-pins.sh` stops PINS and everything it leaves behind.
+
+**Do not use `pkill -9 NINA`.** PINS writes the active profile to
+`~/.local/share/NINA/Profiles/<guid>.profile` only on a **graceful** shutdown,
+so a hard kill silently discards every setting changed since the last clean
+exit -- INDI driver selection, site coordinates, cooling duration. This cost
+real time during the mount work: the driver was set to eqmod, the API replied
+`"Updated setting"`, PINS was killed with `pkill`, and the next start quietly
+reused synscan. It looked like the setting had no effect.
+
+```bash
+./stop-pins.sh              # SIGTERM, wait, escalate only if stuck
+./stop-pins.sh --status     # show what is running, change nothing
+./stop-pins.sh --tests-only # stop the 7625 harness, leave PINS alone
+./stop-pins.sh --force      # SIGKILL now (discards unsaved profile changes)
+```
+
+Order matters and is deliberate:
+
+1. **Test harness first**, matched by `indiserver.*indiFIFO-test` rather than
+   by name -- a bare `pkill indiserver` would take PINS's own server down too.
+2. **SIGTERM to PINS**, then wait (`GRACE_SECONDS`, default 15). A clean exit
+   persists the profile, disconnects equipment and runs `CleanupServer`, which
+   stops its indiserver and removes `/tmp/indiFIFO` by itself.
+3. **Leftovers only if step 2 failed.** Orphaned INDI drivers matter more than
+   they appear: one that outlives PINS keeps holding its device name, so the
+   next start seems to load the OLD driver even after the profile changed.
+4. **Verify**, exiting non-zero if any of 1888/5000/4782/7624/7625 is still
+   held.
+
+Verified on the quark against a live install:
+
+```
+== Stopping PINS
+   sent SIGTERM, waiting up to 15s for a clean exit
+   exited cleanly (profile saved)
+== Clearing INDI leftovers
+   no orphaned indiserver          <- PINS had already done it
+   no orphaned drivers
+== Final state
+   nothing running                 EXIT: 0
+```
+
+...and the profile on disk still read `indi_eqmod_telescope` afterwards.

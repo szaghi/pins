@@ -5,7 +5,7 @@ on it.
 
 ## The short version
 
-**Seven plugins run.** They are built from source by the installer's `plugins`
+**Six plugins run.** They are built from source by the installer's `plugins`
 stage and deployed to `~/.local/share/NINA/Plugins/3.0.0/`.
 
 | Plugin | Folder | What it does |
@@ -16,9 +16,8 @@ stage and deployed to `~/.local/share/NINA/Plugins/3.0.0/`.
 | Hocus Focus | `Hocus Focus` | star detection, autofocus, aberration inspector for backfocus and tilt |
 | Livestack | `Livestack` | live stacking |
 | Phd2 Tools | `Phd2 Tools` | PHD2 guiding helpers |
-| Orbuculum | `Orbuculum` | sequencer instructions for multi-target planning |
 
-**The other 89 in the official repository do not, and mostly cannot.**
+**The other 90 in the official repository do not, and mostly cannot.**
 
 ## Why repository plugins cannot be installed
 
@@ -50,11 +49,27 @@ survives any amount of porting.
 
 So a plugin is useful here only if it does at least one of:
 
-| Export | Why it works |
+| Export | Verdict |
 |---|---|
-| `ISequenceItem`, `ISequenceCondition`, `ISequenceContainer` | sequencer instructions, drivable through the API |
-| `IPluggableBehavior` | replaces a NINA subsystem that runs regardless of UI — Hocus Focus does star detection this way |
-| `IDockableVM` **plus a Vue counterpart** in Touch-N-Stars | how TPPA works: the plugin computes, the Vue app displays |
+| `IPluggableBehavior` | **works** — replaces a NINA subsystem that runs regardless of UI. Hocus Focus does star detection this way |
+| `IDockableVM` **plus a Vue counterpart** in Touch-N-Stars | **works** — TPPA is this: the plugin computes, the Vue app displays |
+| `ISequenceItem`, `ISequenceCondition`, `ISequenceContainer` | **usually not enough** — see below |
+| `IDockableVM` alone | **no** — loads, then unreachable |
+
+### Sequencer instructions execute, but you cannot author with them
+
+This is the subtler trap, and it cost real time here. A plugin exporting
+`ISequenceItem` will load and its instructions *will run* — but **Touch-N-Stars
+has no sequence editor**. Its sequence API is `load`, `start`, `stop`, `reset`,
+`set-target`, `skip`: it runs sequences, it never composes one.
+
+So to use such an instruction you must author a sequence containing it, and the
+only routes are the **Windows drag-and-drop editor** or **hand-writing sequence
+JSON** and POSTing it to `/v2/api/sequence/load`.
+
+If the whole point is to stop using Windows, a sequencer-only plugin is not
+useful. **Orbuculum** and **Orbitals** were both built and loaded successfully
+here before this was understood, then removed for exactly this reason.
 
 Two worked examples, both of which fail:
 
@@ -65,6 +80,12 @@ Two worked examples, both of which fail:
   classes that read PHD2 logs and need no NINA at all, so the sensible route is
   to run it on Windows against copied logs, or build those services into a
   standalone tool.
+- **Orbuculum** and **Orbitals** — the opposite failure. Both port cleanly and
+  load without error; Orbitals needed csproj changes, source fixes and a gap
+  filled in `System.Windows.Compat` to get there. Both were removed anyway,
+  because their only surface is sequencer instructions that no Linux tool can
+  compose into a sequence. Orbuculum's submodule stays pinned in the fork;
+  Orbitals was never added as one, so re-porting it starts from scratch.
 
 ## Assessing a plugin: `check-plugin.sh`
 
@@ -150,11 +171,10 @@ megabytes of clone that fails to compile the moment it is wired up — and
 
 ## In the fork but not deployed
 
-| Submodule | Targets | Status |
+| Submodule | Targets | Why not |
 |---|---|---|
 | `NINA.Joko.Plugin.TenMicron` | `net8.0-windows7.0` | Windows-only, cannot build |
-
-Everything else in `NINA.Plugins/` is deployed.
+| `nina.plugin.orbuculum` | `net10.0-windows;net10.0` | builds and loads, but sequencer-only — unauthorable without Windows |
 
 When checking a submodule by hand, **skip anything matching `*test*`**: a test
 project's target framework says nothing about the plugin's. Reading
@@ -232,7 +252,7 @@ Blank status means a Windows build not present in the fork — assess it with
 | NINA.Luckyimaging | Nick Hardy |  | Plugin for lucky imaging |
 | OnStepX Tools | Michel Moriniaux |  | Mount configuration and automated pointing model generation for OnStepX controllers |
 | Orbitals | George Hilios (jokogeo) |  | Downloads publically available orbital data to target and track Comets, Asteroids, Planets, the Moon, the Sun, and other |
-| Orbuculum | Stefan Berg @isbeorn | **deployed** | A plugin that will provide sequencer instructions that are able to look for future targets and react accordingly. |
+| Orbuculum | Stefan Berg @isbeorn | in fork, not deployed | A plugin that will provide sequencer instructions that are able to look for future targets and react accordingly. |
 | Pentax Camera and Focuser Driver | RTG |  | Focuser and Camera Driver for Pentax SDK: K-1 K-1ii KP 645Z K-3iii, KF and K-70 |
 | Pentax Vintage Camera Driver | RTG |  | Camera Driver for PentaxKR PKTriggerCord: K-r, K-x, K-30, K100D, K10D, K200D, K-3, K5ii |
 | Phd2 Tools | Stefan Berg @isbeorn | **deployed** | Additional capabilities for controlling the PHD2 Guiding Software via N.I.N.A. |

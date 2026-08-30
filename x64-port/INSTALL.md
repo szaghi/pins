@@ -358,7 +358,7 @@ the native one, distinguishable by id.
 
 ### 6.4 Plugins
 
-Seven plugins are built and deployed by the `plugins` stage, into
+Six plugins are built and deployed by the `plugins` stage, into
 `~/.local/share/NINA/Plugins/3.0.0/`:
 
 | Plugin | Why it matters |
@@ -369,12 +369,11 @@ Seven plugins are built and deployed by the `plugins` stage, into
 | Hocus Focus | star detection, autofocus, aberration inspector |
 | Livestack | live stacking |
 | Phd2 Tools | PHD2 guiding helpers |
-| Orbuculum | multi-target sequencer instructions |
 
 Confirm they loaded:
 
 ```bash
-grep 'Successfully loaded plugin' ~/.local/share/NINA/Logs/*.log | tail -7
+grep 'Successfully loaded plugin' ~/.local/share/NINA/Logs/*.log | tail -6
 ```
 
 **Plugins from the official NINA repository will not work here**, and most

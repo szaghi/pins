@@ -1456,3 +1456,40 @@ Then it builds, and on success prints the ready-made `EXTRA_PLUGINS` line.
 `EXTRA_PLUGINS` in `stage_plugins` accepts `"Display Name:path.csproj"` entries
 so a plugin can be tried without editing the installer. Verified against
 Orbuculum (buildable) and TenMicron (correctly reports all four blockers).
+
+## ORBUCULUM AND ORBITALS DROPPED -- SEQUENCER-ONLY IS NOT USABLE HERE (2026-08-30)
+
+Reverses the Orbuculum deployment recorded above, and drops Orbitals with it.
+Both build, deploy and load correctly -- none of that was wrong. What was wrong
+was assuming that "drivable through the API" follows from "exports
+`ISequenceItem`".
+
+It does not. Touch-N-Stars' sequence API is `load`, `start`, `stop`, `reset`,
+`set-target`, `skip`. It *runs* sequences; it has no editor and never composes
+one. So an instruction can execute, yet there is no Linux route to author a
+sequence that contains it. The only routes are the Windows drag-and-drop editor
+or hand-written sequence JSON POSTed to `/v2/api/sequence/load` -- and the
+point of PINS is to stop needing Windows.
+
+Neither is therefore built or deployed. Orbuculum's submodule stays pinned in
+the fork (`nina.plugin.orbuculum`, net10.0-windows;net10.0) so that decision is
+reversible if a sequence editor ever lands in Touch-N-Stars.
+
+Orbitals is the more expensive loss. It was ported far enough to build and load
+-- csproj changes, source fixes, and a gap filled in `System.Windows.Compat`
+-- but that work was never committed and did not survive the session it was
+done in. It was never added as a submodule either, so re-porting starts from
+scratch. If it is ever worth redoing, do the shim fix as its own commit first,
+independently of the plugin, so it survives the plugin being dropped.
+
+**Six plugins now load:**
+```
+Advanced API, Touch 'N' Stars, Three Point Polar Alignment,
+Phd2 Tools, Livestack, Hocus Focus
+```
+
+`check-plugin.sh` now warns on this case rather than calling sequencer items a
+pass: the "has sequencer instructions" verdict is followed by an explicit note
+that authoring still requires Windows or hand-written JSON. The generalised
+rule, in PLUGINS.md: a plugin is useful here only via `IPluggableBehavior`, or
+`IDockableVM` *plus* a Vue counterpart in Touch-N-Stars.

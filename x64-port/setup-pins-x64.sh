@@ -561,6 +561,15 @@ stage_plugins() {
     # excludes ScottPlot.WPF on Linux and has a Linux post-build copy step, so
     # it was ported upstream; we only have to build and deploy it.
     #
+    # DELIBERATELY NOT DEPLOYED: Orbuculum and Orbitals.
+    # Both build and load fine, but they only add *sequencer instructions*, and
+    # Touch-N-Stars has no sequence editor -- it can load, start and monitor a
+    # sequence, never compose one. Authoring anything that uses those
+    # instructions means the Windows drag-and-drop editor, or hand-writing
+    # sequence JSON and POSTing it to /v2/api/sequence/load. Neither is a use
+    # of PINS, so neither is built here. Orbuculum is still a pinned submodule;
+    # Orbitals was never added as one. See PLUGINS.md.
+    #
     # To try another plugin without editing this script, set EXTRA_PLUGINS to
     # one or more "Display Name:path/to/plugin.csproj" entries. Run
     # check-plugin.sh first: it reports whether the plugin can build on Linux
@@ -586,7 +595,6 @@ stage_plugins() {
                 "Livestack:NINA.Plugins/LiveStack/nina.plugin.livestack.csproj" \
                 "Phd2 Tools:NINA.Plugins/nina.plugin.phd2tools/nina.plugin.phd2tools.csproj" \
                 "Hocus Focus:NINA.Plugins/joko.nina.plugins/Joko.NINA.Plugins/Joko.NINA.Plugins.HocusFocus/Joko.NINA.Plugins.HocusFocus.csproj" \
-                "Orbuculum:NINA.Plugins/nina.plugin.orbuculum/Orbuculum/Orbuculum.csproj" \
                 ${EXTRA_PLUGINS:+$EXTRA_PLUGINS}; do
         name=${spec%%:*}
         proj=${spec#*:}

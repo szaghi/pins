@@ -127,19 +127,29 @@ fi
 # dockable, and there is no API to drive it.
 #
 # A plugin is useful here if it does at least one of:
-#   ISequenceItem / SequenceItem  -- sequencer instructions, driven by the API
+#   ISequenceItem / SequenceItem  -- the instructions execute, but see the
+#     caveat below: there is no sequence editor in Touch-N-Stars, so composing
+#     a sequence that uses them needs Windows or hand-written JSON
 #   IDockableVM + a Vue counterpart in Touch-N-Stars (TPPA works this way)
 #   hooks into a NINA subsystem that runs regardless of UI (Hocus Focus does
 #     star detection and autofocus, which the imaging path calls anyway)
-exports=$(grep -rhoE 'Export\(typeof\([A-Za-z]+' "$dir" --include=*.cs 2>/dev/null \
-          | sed 's/.*(//' | sort -u | tr '\n' ' ')
+# Match fully-qualified names too: Horizon Studio writes
+# [Export(typeof(global::NINA.Equipment.Interfaces.ViewModel.IDockableVM))],
+# which a bare [A-Za-z]+ match reduces to the useless token "global".
+exports=$(grep -rhoE 'Export\(typeof\((global::)?[A-Za-z0-9_.]+' "$dir" --include=*.cs 2>/dev/null \
+          | sed 's/.*(//; s/^global:://; s/.*\.//' | sort -u | tr '\n' ' ')
 seqitems=$(grep -rlE 'ISequenceItem|: *SequenceItem|SequenceContainer' "$dir" \
            --include=*.cs 2>/dev/null | wc -l)
 info "exports: ${exports:-none found}"
 info "sequencer-item files: $seqitems"
 
 if (( seqitems > 0 )); then
-    good "has sequencer instructions — drivable through the API"
+    good "has sequencer instructions — they will execute"
+    warn "BUT Touch-N-Stars has no sequence EDITOR: it loads, starts and"
+    warn "monitors sequences, it cannot compose one. Authoring anything that"
+    warn "uses these instructions means the Windows editor, or hand-writing"
+    warn "sequence JSON and POSTing it to /v2/api/sequence/load."
+    warn "Useful only if you are willing to author sequences that way."
 elif [[ "$exports" == *"IDockableVM"* ]]; then
     warn "the only functional export is IDockableVM: a WPF dockable panel"
     warn "it will LOAD but be unreachable — Touch-N-Stars cannot render it,"

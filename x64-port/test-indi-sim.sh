@@ -27,7 +27,11 @@ for bin in indiserver indi_simulator_ccd indi_simulator_telescope; do
     else
         echo "  MISSING $bin"
         echo
-        echo "Install with:  sudo apt-get install -y indi-bin libindi1"
+        echo "Install with:  sudo pacman -S --needed libindi"
+        echo
+        echo "(Arch family only -- see INSTALL.md. On Debian/Ubuntu the distro"
+        echo " INDI is too old for these drivers and 'libindi1' does not exist"
+        echo " on noble; that path is untested.)"
         exit 1
     fi
 done

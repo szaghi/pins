@@ -40,8 +40,8 @@ StartLimitBurst=5
 Type=simple
 
 # Adjust if you published elsewhere.
-WorkingDirectory=%h/pins-run
-ExecStart=%h/pins-run/NINA
+WorkingDirectory=%h/pins/run
+ExecStart=%h/pins/run/NINA
 
 # SIGTERM is what PINS wants. Program.cs registers an ApplicationStopping
 # handler that disconnects equipment, runs INDIClient.CleanupServer (killing

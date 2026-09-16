@@ -14,7 +14,7 @@ This work spans two hosts, and confusing them wastes time.
 | Host | Role | PINS source | Notes |
 |---|---|---|---|
 | **adam** | WSL2 dev workstation | `~/pins` (this repo) | builds, edits, commits. No telescope. |
-| **quark** | Chuwi Minibook X N150, the observatory box | `~/pins-build/pins` | runs PINS with **mount and camera attached**. Clone+pull only, never edited. |
+| **quark** | Chuwi Minibook X N150, the observatory box | `~/pins/build/pins` | runs PINS with **mount and camera attached**. Clone+pull only, never edited. |
 
 `ssh quark` works (also `stefano@192.168.1.36`). Quark's checkout is usually
 several commits behind adam; it is a deployment target, not a worktree. Check

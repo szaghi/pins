@@ -323,7 +323,7 @@ runs `command -v -a indiserver` and warns when more than one is present.
 
 ### Session interrupted by reboot (2026-08-26 -> 08-28)
 The INDI 2.2.4.2 source build in `x64-port/indi-build/indi-core/build` reached
-100% but `sudo make install` never ran, and `~/pins-build` / `~/pins-run` did
+100% but `sudo make install` never ran, and `~/pins/build` / `~/pins/run` did
 not survive the reboot. The build tree itself did; an incremental `make`
 confirmed nothing was left to compile.
 
@@ -879,7 +879,7 @@ committed and pushed, because `stage_pins` cloned **upstream nitr57/pins
 branch develop** -- the defaults -- which does not carry the fix:
 
 ```
-$ cd ~/pins-build-clean/pins && git log --oneline -1
+$ cd ~/pins/build-clean/pins && git log --oneline -1
 75e49f03e INDI Telescope: goto home pos fix        <- upstream, not the fork
 $ grep OpenCvSharp4\" NINA/NINA.csproj
   Version="4.11.0.20250507"                        <- the broken one
@@ -902,7 +902,7 @@ Fixes applied:
 To build the fork:
 ```bash
 ./setup-pins-x64.sh -R git@github.com:szaghi/pins.git -B linux-x64 \
-    --work-dir ~/pins-build --publish-dir ~/pins-run all
+    --work-dir ~/pins/build --publish-dir ~/pins/run all
 ```
 
 ### verify now catches a broken OpenCV
@@ -1048,9 +1048,9 @@ controller upgrade) and alignment/EQMod-alignment/scope-limits are On.
 To build it by hand:
 
 ```bash
-mkdir -p ~/pins-build/build-eqmod && cd ~/pins-build/build-eqmod
+mkdir -p ~/pins/build/build-eqmod && cd ~/pins/build/build-eqmod
 cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release \
-      ~/pins-build/indi-3rdparty/indi-eqmod
+      ~/pins/build/indi-3rdparty/indi-eqmod
 make -j$(nproc) && sudo make install
 ```
 
@@ -1124,7 +1124,7 @@ break the same way after a cable change or a hub re-enumeration.
 Confirming the SDK is healthy, independent of PINS:
 
 ```bash
-~/pins-build/build-toupbase/toupcam_test
+~/pins/build/build-toupbase/toupcam_test
   Found 1 Toupcam device(s):
     Device 0: ATR2600C (ID: usb-0547-13da-2-3-4)
   Successfully opened device: ATR2600C

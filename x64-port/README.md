@@ -47,23 +47,20 @@ Every script takes `--help`.
 ## Quick start
 
 ```bash
-# 1. get the tooling (730 KB, not the 1.3 GB repo)
-git clone --filter=blob:none --no-checkout --depth 1 \
-    --branch linux-x64 git@github.com:szaghi/pins.git ~/pins-tooling
-cd ~/pins-tooling && git sparse-checkout set --no-cone x64-port && git checkout
-cd x64-port
+# 1. get the installer -- one file, 45 KB. No clone, no SSH key.
+curl -fsSLO https://raw.githubusercontent.com/szaghi/pins/linux-x64/x64-port/setup-pins-x64.sh
+chmod +x setup-pins-x64.sh
 
-# 2. build everything
-./setup-pins-x64.sh --pins-repo git@github.com:szaghi/pins.git \
-                    --pins-branch linux-x64 all
+# 2. build everything. Defaults to this fork (szaghi/pins, branch linux-x64);
+#    tee so you can check afterwards what it actually built.
+./setup-pins-x64.sh all 2>&1 | tee ~/pins-install.log
 
-# 3. open the firewall — all three ports
-for p in 1888 5000 4782; do
-    sudo ufw allow from 192.168.1.0/24 to any port $p proto tcp
-done
+# 3. open the firewall -- all three ports, or none of it works.
+#    /16 rather than /24 so it still works on a phone hotspot in the field.
+sudo ufw allow from 192.168.0.0/16 to any port 1888,5000,4782 proto tcp
 
-# 4. run it
-./start-pins.sh
+# 4. run it. The scripts now live in the build tree.
+~/pins/build/pins/x64-port/start-pins.sh
 ```
 
 Then open `http://<host>:5000`.

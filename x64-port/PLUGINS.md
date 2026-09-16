@@ -217,7 +217,7 @@ every way that does not involve looking at it:
 ## Assessing a plugin: `check-plugin.sh`
 
 ```bash
-cd ~/pins-tooling/x64-port
+cd /tmp/pins-tooling/x64-port
 ./check-plugin.sh --list                    # every submodule in the fork
 ./check-plugin.sh path/to/Plugin.csproj     # assess one, and build it if it can
 ```
@@ -290,7 +290,7 @@ list in `stage_plugins`, so every machine builds it.
 
 ## Why vendoring them all would not help
 
-Adding the other 89 as submodules gains nothing. The seven that run were
+Adding the other 90 as submodules gains nothing. The six that run were
 **modified**: `net10.0` targets added, NINA references switched from NuGet to
 in-tree projects, Windows-only code fixed. An unported submodule is tens of
 megabytes of clone that fails to compile the moment it is wired up — and

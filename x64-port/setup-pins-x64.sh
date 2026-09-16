@@ -41,13 +41,38 @@ set -euo pipefail
 
 # ---------------------------------------------------------------- settings --
 INDI_VERSION="${INDI_VERSION:-v2.2.4.2}"
-PINS_REPO="${PINS_REPO:-https://github.com/nitr57/pins.git}"
-PINS_BRANCH="${PINS_BRANCH:-develop}"
+# This script ships inside szaghi/pins on the linux-x64 branch, so that is what
+# it builds by default: running it should produce the code it came with.
+#
+# It used to default to upstream nitr57/pins on develop, which does NOT carry
+# the linux-x64 fixes -- notably the OpenCvSharp bump, without which the UI
+# hangs after every exposure. That produced a build which looked fine and
+# failed in use, and the only defence was remembering to pass two flags.
+# Pass --pins-repo/--pins-branch to build upstream or any other fork.
+PINS_REPO="${PINS_REPO:-https://github.com/szaghi/pins.git}"
+PINS_BRANCH="${PINS_BRANCH:-linux-x64}"
+
+# The vendor SDK blobs are NOT forked: szaghi/pins.external does not exist and
+# there is nothing in it that needs changing for x86-64. Upstream is correct
+# here -- do not "fix" this to match PINS_REPO.
 EXTERNAL_REPO="${EXTERNAL_REPO:-https://github.com/nitr57/pins.external.git}"
 DOTNET_VERSION="${DOTNET_VERSION:-10.0.302}"   # must match PINS global.json
 
-WORK="${WORK:-$HOME/pins-build}"
-PUBLISH="${PUBLISH:-$HOME/pins-run}"
+# One tree, two subdirectories with opposite lifecycles. They cannot be merged:
+# stage_pins does `rm -rf "$PUBLISH"` before publishing, so a shared directory
+# would wipe the 1.2 GB of INDI clones on every rebuild -- hence the guard in
+# main(). Keeping them as siblings under $PINS_HOME gives one place to look
+# without pretending they are the same kind of thing.
+#
+#   $PINS_HOME/build   scratch: clones, CMake trees, downloads. Reusable --
+#                      re-running a stage re-uses what is already there.
+#   $PINS_HOME/run     the product. Wiped and recreated by every build.
+#
+# Runtime state (profiles, logs, NINA.sqlite) lives in ~/.local/share/NINA and
+# is deliberately outside both: a rebuild must never touch it.
+PINS_HOME="${PINS_HOME:-$HOME/pins}"
+WORK="${WORK:-$PINS_HOME/build}"
+PUBLISH="${PUBLISH:-$PINS_HOME/run}"
 DOTNET_ROOT="${DOTNET_ROOT:-$HOME/.dotnet}"
 
 # PINS_SRC is derived from WORK, so it must be computed AFTER option parsing,
@@ -72,14 +97,16 @@ Stages: deps | indi | pins | plugins | astap | external | verify | all
         (default: all)
 
 Options:
+  -H, --pins-home DIR    parent of build/ and run/
+                         (default: \$HOME/pins)
   -w, --work-dir DIR     scratch tree for clones and build output
-                         (default: \$HOME/pins-build)
+                         (default: \$PINS_HOME/build)
   -p, --publish-dir DIR  where the PINS publish tree lands
-                         (default: \$HOME/pins-run)
+                         (default: \$PINS_HOME/run)
   -R, --pins-repo URL    PINS repository to clone
-                         (default: upstream nitr57/pins)
+                         (default: szaghi/pins -- this fork)
   -B, --pins-branch REF  branch to build
-                         (default: develop)
+                         (default: linux-x64)
   -h, --help             this text
 
 The repo/branch defaults point at UPSTREAM. To build your own fork pass
@@ -1021,18 +1048,25 @@ stage_verify() {
 # ---------------------------------------------------------------------- main
 main() {
     local stage=""
+    # WORK and PUBLISH already hold their defaults, so remember whether the user
+    # actually passed them: --pins-home must move only the ones left implicit.
+    local work_set="" publish_set=""
 
     while (( $# )); do
         case "$1" in
             -h|--help)  usage ;;
+            -H|--pins-home)
+                [[ ${2:-} ]] || die "--pins-home needs a directory"
+                PINS_HOME="$2"; shift 2 ;;
+            --pins-home=*)   PINS_HOME="${1#*=}"; shift ;;
             -w|--work-dir)
                 [[ ${2:-} ]] || die "--work-dir needs a directory"
-                WORK="$2"; shift 2 ;;
+                WORK="$2"; work_set=1; shift 2 ;;
             -p|--publish-dir)
                 [[ ${2:-} ]] || die "--publish-dir needs a directory"
-                PUBLISH="$2"; shift 2 ;;
-            --work-dir=*)    WORK="${1#*=}";    shift ;;
-            --publish-dir=*) PUBLISH="${1#*=}"; shift ;;
+                PUBLISH="$2"; publish_set=1; shift 2 ;;
+            --work-dir=*)    WORK="${1#*=}";    work_set=1;    shift ;;
+            --publish-dir=*) PUBLISH="${1#*=}"; publish_set=1; shift ;;
             -R|--pins-repo)
                 [[ ${2:-} ]] || die "--pins-repo needs a URL"
                 PINS_REPO="$2"; shift 2 ;;
@@ -1048,6 +1082,11 @@ main() {
         esac
     done
     stage="${stage:-all}"
+
+    # --pins-home relocates both subdirectories, but never overrides an explicit
+    # --work-dir or --publish-dir: those stay where the caller put them.
+    [[ -z "$work_set"    ]] && WORK="$PINS_HOME/build"
+    [[ -z "$publish_set" ]] && PUBLISH="$PINS_HOME/run"
 
     # Absolute paths: several stages cd into subshells, and a relative WORK
     # would resolve differently depending on which one is running.

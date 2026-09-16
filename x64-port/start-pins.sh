@@ -17,7 +17,10 @@
 
 set -uo pipefail
 
-PUBLISH="${PUBLISH:-$HOME/pins-run}"
+# Must track setup-pins-x64.sh: both default to $PINS_HOME/run so that moving
+# the tree with --pins-home keeps start/stop pointing at the right place.
+PINS_HOME="${PINS_HOME:-$HOME/pins}"
+PUBLISH="${PUBLISH:-$PINS_HOME/run}"
 LOGFILE="${PINS_LOG:-/tmp/pins.log}"
 WAIT_SECONDS="${WAIT_SECONDS:-90}"
 
@@ -47,7 +50,7 @@ while (( $# )); do
             echo "  -f, --foreground       run in this terminal with the log on screen"
             echo "                         (Ctrl-C stops it; the profile is still saved)"
             echo "  -n, --no-stop          do not stop a running instance first"
-            echo "  -p, --publish-dir DIR  where PINS is published (default: \$HOME/pins-run)"
+            echo "  -p, --publish-dir DIR  where PINS is published (default: \$PINS_HOME/run)"
             echo "  -h, --help             this text"
             echo
             echo "Environment: PINS_LOG (default /tmp/pins.log), WAIT_SECONDS (90)"

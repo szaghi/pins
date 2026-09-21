@@ -295,21 +295,70 @@ sensor did.
 | | LCG (mode 0) | HCG (mode 1) |
 |---|---:|---:|
 | e-/ADU | 0.7794 | 0.2531 |
-| read noise | 4.92 e- | **4.10 e-** |
+| read noise | 2.39 e- | **0.93 e-** |
 | full well | **51,078 e-** | 16,587 e- |
-| dynamic range | **80.3 dB** | 72.1 dB |
+| dynamic range | **86.6 dB** | 85.0 dB |
 | linearity | +-0.30% | +-0.35% |
 
 51,078 e- matches Sony's ~51,000 e- for the IMX571 at unity gain: the sensor
 is to spec.
 
-### Conversion gain across the range
+### The full table
 
-| gain | e-/ADU LCG | e-/ADU HCG | ratio | RN LCG (e-) | RN HCG (e-) |
-|---:|---:|---:|---:|---:|---:|
-| 100 | 0.7794 +-0.3% | 0.2531 +-0.6% | 3.08 | 4.92 | **4.10** |
-| 1000 | 0.0772 +-0.3% | 0.0253 +-0.5% | 3.05 | 4.60 | **3.99** |
-| 2000 | 0.0383 +-1.0% | 0.0126 +-0.8% | 3.04 | 4.51 | **3.95** |
+Conversion gain from flat pairs, four levels per gain, scatter 0.2-0.4%. Read
+noise is `sigma_bias * e-/ADU`, with sigma from the **dark** bias sweeps — see
+the warning below.
+
+| gain | e-/ADU LCG | RN LCG | FW LCG | DR LCG | e-/ADU HCG | RN HCG | FW HCG | DR HCG |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 100 | 0.7794 | 2.39 e- | 51,078 | 86.6 dB | 0.2531 | 0.93 e- | 16,587 | 85.0 dB |
+| 150 | 0.5199 | 2.26 | 34,072 | 83.6 | 0.1695 | 0.90 | 11,108 | 81.8 |
+| 200 | 0.3891 | 2.16 | 25,500 | 81.4 | 0.1274 | 0.88 | 8,349 | 79.6 |
+| 300 | 0.2588 | 2.05 | 16,960 | 78.4 | 0.0848 | 0.85 | 5,557 | 76.3 |
+| 1000 | 0.0772 | 1.87 | 5,059 | 68.6 | 0.0253 | 0.76 | 1,658 | 66.8 |
+| 2000 | 0.0383 | 1.70 | 2,510 | 63.4 | 0.0126 | 0.73 | 826 | 61.1 |
+
+Consistency check — `e-/ADU * gain` is constant to 1% across a factor of
+twenty in gain, which a systematic error would not leave flat:
+
+```
+LCG: 77.9  78.0  77.8  77.6  77.2  76.6
+HCG: 25.3  25.4  25.5  25.4  25.3  25.2
+```
+
+### Bias from the flat stage is `bias_lit`, not `bias`
+
+The flat stages need a bias pair at matching settings to subtract the
+read-noise term from the flat difference, but they run with the panel lit and
+cannot ask for a cover between every level. Those frames therefore carry light.
+
+They are recorded as **`bias_lit`**, a distinct kind, so nothing can mistake
+them for dark frames. The analyser uses them for conversion gain, where the
+contamination cancels in signal/variance, and never for read noise. Each flat
+stage also runs `check_bias_leak`, which compares the median against the offset
+and reports the excess in ADU when it exceeds `CAMANA_BIAS_LEAK_WARN` (20).
+
+This was a real error, not a hypothetical: read noise was overstated by a
+factor of two in the first version of these results — 4.92 e- reported against
+2.39 actual at gain 100 — because those frames were treated as bias. The leak
+scales with panel brightness, so it hides at low levels: sigma read 4.34 ADU at
+one brightness and 21.5 ADU at ten times that, same settings.
+
+**Read noise always comes from the bias sweep**, which is shot with the cap on.
+
+### Ultra Mode
+
+`CameraSettings-TouptekAlikeUltraMode`, on by default, read at connect (so a
+reconnect is needed after changing it). Measured worth, LCG bias sweep:
+
+| gain | on | off | penalty |
+|---:|---:|---:|:--|
+| 100 | 3.07 ADU | 3.68 | +20% |
+| 1000 | 24.21 | 28.19 | +16% |
+| 2000 | 44.33 | 52.37 | +18% |
+
+Leave it on. The minimum adequate offset is unchanged either way, and every
+figure in this document was measured with it enabled.
 
 **HCG has 12-17% lower read noise in electrons at every gain.** The earlier
 verdict from the bias sweeps — "HCG is noisier" — was wrong: it compared ADU,
@@ -323,8 +372,9 @@ the full-well ratio.
 10 expected, 0.0772/0.0383 = 2.02 against 2. Gain 1000 really is 10x gain 100
 — measured, not assumed.
 
-**Read noise in electrons is nearly flat with gain** (4.5-4.9 e- LCG,
-3.9-4.1 e- HCG). The fourteen-fold rise seen in ADU was pure amplification.
+**Read noise in electrons falls gently with gain** (2.39 -> 1.70 e- LCG,
+0.93 -> 0.73 e- HCG). The fourteen-fold rise seen in ADU was pure
+amplification.
 
 ### Minimum adequate offset
 
@@ -354,18 +404,23 @@ flat by its saturated-pixel count, not its median.
 
 ### Which mode to use
 
-**17% less read noise costs 8.2 dB of dynamic range.** Eight dB is a factor of
-2.6 in recordable signal, against a gain of 0.8 electrons on the noise floor.
-For most targets that is a bad trade: **use LCG**. HCG earns its place only
-when read noise genuinely dominates — long subs on faint targets with no
-bright star that would clip at 16,587 e- instead of 51,078.
+HCG cuts read noise by 61% — 2.39 to 0.93 e- at gain 100 — and gives up two
+thirds of the full well. Those nearly cancel: **dynamic range differs by only
+1.6 dB**, so the choice is not about range at all. It is about which end of
+the scale the target needs.
 
 | | LCG | HCG |
 |---|---|---|
-| read noise | 4.5-4.9 e- | **3.9-4.1 e-** |
+| read noise | 1.7-2.4 e- | **0.73-0.93 e-** |
 | full well | **3x** | 1x |
+| dynamic range | **86.6 dB** | 85.0 dB |
 | offset needed | 200-2500 | 200 to beyond 2500 |
 | Bayer channel spread | **0.7%** | 3% |
+
+**Default to LCG.** A clipped star cannot be recovered; a slightly noisier
+background can be integrated down. Reach for HCG when the signal itself is a
+handful of electrons per sub — narrowband, long exposures, faint extended
+objects — and nothing in the field would have used the extra headroom.
 
 ---
 
@@ -397,8 +452,8 @@ separate script at the time, before the frameset-grouping fix; re-running
 ## Worth measuring next
 
 - **Ultra Mode off.** Everything above was taken with
-  `TouptekAlikeUltraMode = True`, ToupTek's low-noise readout. The 4.92 /
-  4.10 e- figures are *with it enabled*; with it off they are presumably
+  `TouptekAlikeUltraMode = True`, ToupTek's low-noise readout. All figures
+  here are *with it enabled*; measured, turning it off costs
   worse. It is a one-line profile write away and nobody has quantified it.
 - **Gain 2000 HCG offset.** Its minimum is above the swept range, so the HCG
   recommendation of 2000 does not actually cover it. Extend

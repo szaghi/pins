@@ -2515,3 +2515,162 @@ Worth noting for the method: the bug was invisible from the output. A
 collapsed run still prints a plausible e-/ADU per gain, with no indication
 that three quarters of the data went unread. It surfaced only because the
 consolidation work read the grouping code.
+
+## ULTRA MODE IS WORTH 16-20% OF READ NOISE (2026-09-21)
+
+Measured directly: the same bias sweep at gain 100/1000/2000 in LCG at 0.0 C,
+once with `CameraSettings-TouptekAlikeUltraMode` True and once False. The
+driver reads that setting at connect (`ToupTekAlikeCamera.cs:649`), so the
+camera was disconnected and reconnected between the two runs.
+
+| gain | Ultra Mode ON | Ultra Mode OFF | penalty | min offset (both) |
+|---:|---:|---:|:--|---:|
+| 100 | 3.07 ADU | 3.68 ADU | **+20%** | 200 |
+| 1000 | 24.21 | 28.19 | **+16%** | 1500 |
+| 2000 | 44.33 | 52.37 | **+18%** | 2500 |
+
+**The name is accurate: it is a genuine low-noise mode, and it should stay on.**
+It is already the profile default, it costs nothing, and the minimum adequate
+offset is unchanged at every gain -- a 20% wider distribution is not enough to
+push the tail past the next grid step.
+
+In electrons, *assuming Ultra Mode does not also change conversion gain* --
+plausible but **not verified**, since that would need flats with it off --
+4.92 -> ~5.90 e- at gain 100, 4.60 -> ~5.35 at gain 1000, 4.51 -> ~5.32 at
+gain 2000.
+
+The two runs gave clearly distinct numbers, which also settles a risk flagged
+before the measurement: identical results would have been ambiguous between
+"Ultra Mode does nothing to read noise" and "the profile write never reached
+the driver". It reached it.
+
+Incidental: at gain 100, Ultra Mode OFF reads 3.68 ADU -- the same figure as
+HCG with Ultra Mode ON. A numerical coincidence, but it puts the two switches
+on a similar scale of effect.
+
+## THE IN-PLACE SDK RECOVERY WORKS -- CORRECTING THE 2026-09-20 ENTRY
+
+The earlier entry stated that a wedged ToupTek SDK is cleared **only** by
+`stop-pins.sh` + `start-pins.sh`, because a disconnect/reconnect had failed to
+clear it. `recover_sdk()` was written anyway, with a note saying little was
+expected of its third rung.
+
+It worked. During the Ultra Mode sweep the SDK wedged at 70 frames and the
+ladder ran:
+
+```
+WARN attempting in-place recovery 1/3
+     abort alone did not help; idling 30s
+     idle did not help; reconnecting the camera
+OK   recovered without restarting PINS; continuing
+```
+
+The sweep went on to 122 of 126 frames with one recovery and no restart.
+
+What differs from the failed attempt on 2026-09-20: that one reconnected
+**immediately** after the wedge. `recover_sdk()` reconnects only after
+abort-exposure and a 30 s idle, and re-applies the set point afterwards. The
+pause appears to be the part that matters.
+
+So the rule is now: **a wedge does not necessarily require a PINS restart**,
+provided the recovery is staged rather than immediate. A restart remains the
+fallback when three in-place attempts fail.
+
+## READ NOISE WAS OVERSTATED BY A FACTOR OF TWO (2026-09-21, late)
+
+The published read-noise figures -- 4.92 e- for LCG at gain 100, 4.10 e- for
+HCG -- were **wrong**. The corrected values are **2.39 e-** and **0.93 e-**.
+
+Read noise in electrons is `sigma_bias * e-/ADU`. The flat-based calculation
+took `sigma_bias` from the bias frames the flat script captures **immediately
+after each flat**, and that script never prompts to cover the telescope between
+the two. Those frames were exposed to the flat panel.
+
+At the original panel brightness the leak was small and passed unnoticed. When
+the panel was remounted for the mid-gain flats at roughly ten times the
+brightness, it became impossible to miss:
+
+```
+gain 150, offset 2500, "bias" with the panel lit:  sigma 21.5 ADU, median 2746
+gain 150, offset 2500, true dark bias (AM sweep):  sigma  4.34 ADU, median 2501
+```
+
+Reproduced with two fresh frames under the same conditions: 21.43 ADU. Not an
+artefact of the flats -- any "bias" taken with the panel lit is contaminated.
+
+**Conversion gain was never affected.** Contamination raises both the signal
+and the variance and cancels in the ratio, which is why the four levels still
+agreed to 0.3% and why `e-/ADU * gain` stayed flat. Only the read-noise column
+needed rebuilding, from the 252-frame dark sweeps.
+
+### Corrected characterisation, both modes, all six gains
+
+| gain | e-/ADU LCG | RN LCG | FW LCG | DR LCG | e-/ADU HCG | RN HCG | FW HCG | DR HCG |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 100 | 0.7794 | 2.39 e- | 51,078 | 86.6 dB | 0.2531 | 0.93 e- | 16,587 | 85.0 dB |
+| 150 | 0.5199 | 2.26 | 34,072 | 83.6 | 0.1695 | 0.90 | 11,108 | 81.8 |
+| 200 | 0.3891 | 2.16 | 25,500 | 81.4 | 0.1274 | 0.88 | 8,349 | 79.6 |
+| 300 | 0.2588 | 2.05 | 16,960 | 78.4 | 0.0848 | 0.85 | 5,557 | 76.3 |
+| 1000 | 0.0772 | 1.87 | 5,059 | 68.6 | 0.0253 | 0.76 | 1,658 | 66.8 |
+| 2000 | 0.0383 | 1.70 | 2,510 | 63.4 | 0.0126 | 0.73 | 826 | 61.1 |
+
+Internal consistency check -- `e-/ADU * gain` must be constant if the gain
+scale is a pure multiplier:
+
+```
+LCG: 77.9  78.0  77.8  77.6  77.2  76.6
+HCG: 25.3  25.4  25.5  25.4  25.3  25.2
+```
+
+Twelve measurements, two modes, a factor of twenty in gain, constant to 1%.
+
+### The trade-off changes shape
+
+Dynamic range now differs by **1.6 dB between modes, not 8.2**. HCG's read
+noise is 61% lower, not 17%, which nearly offsets its third of the full well.
+So the choice is not about dynamic range at all -- it is about which end of the
+scale the target needs. LCG remains the default because a clipped star cannot
+be recovered while a slightly noisier background can be integrated down.
+
+### The script defect behind it
+
+`stage_flat` and the ad-hoc flat scripts capture bias frames straight after the
+flats with no prompt to cover. **Any bias taken that way is invalid.** Either
+prompt for a cover, or -- better -- do not capture bias in the flat stage at
+all and take sigma from the bias sweep, which is where the good data already
+is. Not yet fixed in `camera-analysis.sh`.
+
+The wider lesson, and it is the same one as the manifest collapse: **a
+contaminated measurement that still looks plausible is more dangerous than one
+that fails.** 4.92 e- is a believable read noise for this sensor. Nothing in
+the output flagged it. It surfaced only because the panel got brighter.
+
+### The script defect is fixed: `bias_lit` (2026-09-21, late)
+
+The entry above ends by noting that the flat stages still capture bias frames
+with the panel lit, with no prompt to cover. Fixed now, and not by prompting.
+
+A prompt would defeat `--flat-auto`, whose whole point is running unattended
+across four levels per gain. And simply dropping the bias capture is wrong too:
+conversion gain genuinely needs a bias pair at matching settings, because
+`g = signal / (var(f1-f2)/2 - var(b1-b2)/2)` and at the low levels the
+read-noise term is most of the variance.
+
+So the frames stay, and are recorded as a distinct kind, **`bias_lit`**:
+
+- `camera_analysis.py` matches `bias_lit` when pairing a bias set to a flat
+  set for conversion gain, preferring a true `bias` if one exists at the same
+  settings. Nothing that computes read noise ever sees `bias_lit`.
+- `check_bias_leak()` measures the leak rather than assuming it: it compares
+  the frame's median against the offset and reports the excess in ADU when it
+  exceeds `CAMANA_BIAS_LEAK_WARN` (20 ADU). A leak is harmless for conversion
+  gain and fatal for read noise, and the warning says exactly that.
+
+Verified against the real 2026-09-21 manifests with the kind renamed: 12 flat
+framesets, 3 `bias_lit` framesets, every flat resolving its bias through
+`key[:3]`, no orphans.
+
+The naming is the fix. The previous code was not wrong about what it captured
+-- the comment even said "matching bias pair" -- it was wrong to call the
+result `bias`, because that is the name read noise looks for. A frame that is
+not dark should not be filed under a name that means dark.

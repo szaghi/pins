@@ -1,0 +1,1100 @@
+[
+  {
+    "gain": 100,
+    "offset": 0,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-34-56__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:35:01+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 0,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-35-01__0.20_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:35:07+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 0,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-35-07__0.30_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:35:12+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 0,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-35-12__0.40_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:35:18+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 0,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-35-18__0.50_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:35:23+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 0,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-35-23__0.50_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:35:29+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 200,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-35-30__0.50_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:35:35+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 200,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-35-35__0.50_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:35:40+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 200,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-35-40__0.50_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:35:46+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 200,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-35-46__0.40_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:35:51+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 200,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-35-51__0.40_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:35:57+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 200,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-35-57__0.40_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:36:02+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-36-03__0.40_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:36:08+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-36-08__0.30_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:36:14+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-36-14__0.30_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:36:19+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-36-19__0.30_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:36:25+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-36-25__0.20_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:36:30+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-36-30__0.20_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:36:36+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 1000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-36-37__0.20_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:36:42+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 1000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-36-42__0.20_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:36:47+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 1000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-36-47__0.20_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:36:53+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 1000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-36-53__0.10_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:36:58+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 1000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-36-58__0.10_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:37:04+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 1000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-37-04__0.10_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:37:09+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 1500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-37-10__0.10_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:37:16+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 1500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-37-16__0.10_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:37:21+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 1500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-37-21__0.10_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:37:27+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 1500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-37-27__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:37:32+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 1500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-37-32__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:37:38+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 1500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-37-38__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:37:43+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 2000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-37-44__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:37:49+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 2000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-37-49__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:37:55+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 2000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-37-55__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:38:00+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 2000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-38-00__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:38:06+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 2000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-38-06__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:38:11+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 2000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-38-11__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:38:17+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-38-18__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:38:23+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-38-23__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:38:29+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-38-29__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:38:34+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-38-34__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:38:40+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-38-40__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:38:45+02:00"
+  },
+  {
+    "gain": 100,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-38-45__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:38:51+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 0,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-39-37__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:39:42+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 0,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-39-42__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:39:48+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 0,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-39-48__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:39:53+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 0,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-39-53__-0.10_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:39:59+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 0,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-39-59__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:40:04+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 0,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-40-04__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:40:10+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 200,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-40-11__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:40:16+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 200,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-40-16__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:40:22+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 200,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-40-22__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:40:27+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 200,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-40-27__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:40:33+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 200,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-40-33__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:40:38+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 200,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-40-38__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:40:44+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-40-45__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:40:50+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-40-50__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:40:56+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-40-56__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:41:01+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-41-01__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:41:07+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-41-07__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:41:12+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-41-12__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:41:18+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 1000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-41-19__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:41:24+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 1000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-41-24__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:41:30+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 1000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-41-30__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:41:35+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 1000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-41-35__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:41:41+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 1000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-41-41__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:41:46+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 1000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-41-47__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:41:52+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 1500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-41-53__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:41:58+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 1500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-41-58__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:42:04+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 1500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-42-04__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:42:10+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 1500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-42-10__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:42:15+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 2000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-54-03__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:54:09+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 2000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-54-09__0.20_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:54:14+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 2000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-54-14__0.30_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:54:20+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 2000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-54-20__0.30_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:54:25+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-54-26__0.40_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:54:31+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-54-31__0.40_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:54:37+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-54-37__0.40_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:54:42+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-54-42__0.40_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:54:48+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-54-48__0.40_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:54:53+02:00"
+  },
+  {
+    "gain": 1000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-54-53__0.40_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:54:59+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 0,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-55-45__0.10_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:55:50+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 0,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-55-50__0.10_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:55:56+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 0,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-55-56__0.10_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:56:01+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 0,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-56-01__0.10_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:56:07+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 0,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-56-07__0.10_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:56:12+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 0,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-56-12__0.10_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:56:18+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 200,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-56-19__0.10_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:56:24+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 200,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-56-24__0.10_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:56:30+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 200,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-56-30__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:56:35+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 200,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-56-35__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:56:41+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 200,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-56-41__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:56:46+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 200,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-56-46__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:56:52+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-56-53__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:56:58+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-56-58__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:57:04+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-57-04__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:57:09+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-57-09__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:57:15+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-57-15__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:57:20+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-57-20__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:57:26+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 1000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-57-27__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:57:32+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 1000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-57-32__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:57:38+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 1000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-57-38__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:57:43+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 1000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-57-43__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:57:49+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 1000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-57-49__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:57:55+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 1000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-57-55__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:58:00+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 1500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-58-01__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:58:07+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 1500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-58-07__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:58:12+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 1500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-58-12__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:58:18+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 1500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-58-18__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:58:23+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 1500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-58-23__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:58:29+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 1500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-58-29__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:58:34+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 2000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-58-35__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:58:41+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 2000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-58-41__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:58:46+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 2000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-58-47__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:58:52+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 2000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-58-52__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:58:58+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 2000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-58-58__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:59:03+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 2000,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-59-03__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:59:09+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-59-10__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:59:15+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-59-15__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:59:21+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-59-21__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:59:26+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-59-26__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:59:32+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-59-32__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:59:37+02:00"
+  },
+  {
+    "gain": 2000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/Documents/N.I.N.A/2026-09-21/BIAS/2026-09-21_19-59-37__0.00_0.00s_0000.fits",
+    "timestamp": "2026-09-21T19:59:43+02:00"
+  }
+]

@@ -96,6 +96,10 @@ CAMANA_FLAT_TARGET_PCT="${CAMANA_FLAT_TARGET_PCT:-70}"
 # high one the shot-noise end, and the fit needs both.
 CAMANA_FLAT_FRACTIONS="${CAMANA_FLAT_FRACTIONS:-0.14 0.35 0.68 0.95}"
 CAMANA_FLAT_PAIRS="${CAMANA_FLAT_PAIRS:-2}"    # flats, and bias, per level
+# How much light a flat-stage "bias" may carry before it is called out, in ADU
+# above the offset. 20 is well under the point where conversion gain suffers;
+# these frames are never valid for read noise at any leak level.
+CAMANA_BIAS_LEAK_WARN="${CAMANA_BIAS_LEAK_WARN:-20}"
 
 # -- linearity ramp (--linearity) --------------------------------------------
 # Full well is usually quoted as e-/ADU * 65535, which assumes the response
@@ -1042,6 +1046,41 @@ stage_bias() {
     (( failed == 0 )) || warn "some captures failed; the analyser will use what exists"
 }
 
+# Report how much light a "bias" taken beside the flats is actually carrying.
+#
+# The flat stages need a bias pair at matching settings to subtract the
+# read-noise term from the flat difference, but they run with the panel lit,
+# so those frames are not dark. This measures the leak rather than assuming
+# it: the median should sit at the offset, and anything above it is light.
+#
+# A small leak is harmless for conversion gain and fatal for read noise, which
+# is the distinction the `bias_lit` kind exists to keep. This warns when the
+# leak is large enough that even the conversion gain starts to suffer.
+check_bias_leak() {
+    local path="$1" gain="$2" median excess
+    median=$("$CAMANA_VENV/bin/python" - "$path" <<'PY' 2>/dev/null
+import sys
+import numpy as np
+from astropy.io import fits
+with fits.open(sys.argv[1]) as h:
+    for hdu in h:
+        if hdu.data is not None and hdu.data.ndim == 2:
+            print(int(np.median(hdu.data)))
+            break
+PY
+)
+    [[ -z "$median" ]] && return 0
+    excess=$(( median - CAMANA_FLAT_OFFSET ))
+    (( excess < 0 )) && excess=0
+    if (( excess > CAMANA_BIAS_LEAK_WARN )); then
+        warn "gain $gain: 'bias' median $median vs offset $CAMANA_FLAT_OFFSET"
+        warn "  -> ${excess} ADU of light is reaching the sensor at ${CAMANA_EXPOSURE}s."
+        warn "  Conversion gain tolerates this; read noise from these frames"
+        warn "  would be wrong. Use the bias sweep for read noise."
+    fi
+    return 0
+}
+
 stage_flat() {
     check_camera
     trap restore_settings EXIT
@@ -1094,13 +1133,14 @@ stage_flat() {
             # A matching bias pair at the same settings: conversion gain needs
             # it to subtract the read-noise term from the flat difference.
             info "gain $gain: matching bias pair"
-            bias_a=$(capture_frame "$CAMANA_EXPOSURE" "$gain" "$CAMANA_FLAT_OFFSET" bias) \
+            bias_a=$(capture_frame "$CAMANA_EXPOSURE" "$gain" "$CAMANA_FLAT_OFFSET" bias_lit) \
                 || { warn "bias A failed at gain $gain"; continue; }
-            bias_b=$(capture_frame "$CAMANA_EXPOSURE" "$gain" "$CAMANA_FLAT_OFFSET" bias) \
+            bias_b=$(capture_frame "$CAMANA_EXPOSURE" "$gain" "$CAMANA_FLAT_OFFSET" bias_lit) \
                 || { warn "bias B failed at gain $gain"; continue; }
-            manifest_append "$gain" "$CAMANA_FLAT_OFFSET" "$mode" bias \
+            check_bias_leak "$bias_a" "$gain"
+            manifest_append "$gain" "$CAMANA_FLAT_OFFSET" "$mode" bias_lit \
                 "$CAMANA_EXPOSURE" "$bias_a"
-            manifest_append "$gain" "$CAMANA_FLAT_OFFSET" "$mode" bias \
+            manifest_append "$gain" "$CAMANA_FLAT_OFFSET" "$mode" bias_lit \
                 "$CAMANA_EXPOSURE" "$bias_b"
             good "gain $gain done"
         done
@@ -1206,10 +1246,21 @@ stage_flat_auto() {
             # A bias pair from another gain does not subtract the right
             # amount, and at low signal levels the read-noise term is most of
             # the variance -- which is exactly where the low levels live.
+            #
+            # THESE ARE NOT DARK BIAS. The panel is lit and the scope is
+            # uncovered, so they carry whatever light leaks in at the minimum
+            # exposure. Harmless for conversion gain -- contamination enters
+            # signal and variance alike and cancels in the ratio -- but it
+            # makes them **useless for read noise**, and using them that way
+            # overstated read noise by a factor of two on 2026-09-21 before
+            # the error was caught. Recorded as `bias_lit` so nothing can
+            # mistake them for the real thing; read noise comes from the bias
+            # sweep, shot with the scope capped.
             for (( rep = 0; rep < CAMANA_FLAT_PAIRS; rep++ )); do
-                if path=$(capture_frame "$CAMANA_EXPOSURE" "$gain" "$CAMANA_FLAT_OFFSET" bias); then
-                    manifest_append "$gain" "$CAMANA_FLAT_OFFSET" "$mode" bias \
+                if path=$(capture_frame "$CAMANA_EXPOSURE" "$gain" "$CAMANA_FLAT_OFFSET" bias_lit); then
+                    manifest_append "$gain" "$CAMANA_FLAT_OFFSET" "$mode" bias_lit \
                         "$CAMANA_EXPOSURE" "$path" && done=$(( done + 1 ))
+                    check_bias_leak "$path" "$gain"
                 else
                     warn "bias $((rep + 1)) failed at gain $gain level $level"
                     failed=$(( failed + 1 ))

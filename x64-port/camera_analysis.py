@@ -945,9 +945,17 @@ class CameraAnalysis:
             One per flat set that produced at least one channel result.
         """
         sets = list(framesets)
-        bias_index = {
-            fs.key[:3]: fs for fs in sets if fs.kind == "bias" and len(fs.paths) >= 2
-        }
+        # `bias_lit` is what the flat stages record: a bias pair at matching
+        # settings but with the panel lit, because the stage cannot ask the
+        # operator to cover the scope between every level. The light it
+        # carries cancels in signal/variance, so it is fine here -- and it is
+        # deliberately not called "bias", so that nothing computes read noise
+        # from it. A true dark bias at the same settings wins if one exists.
+        bias_index: dict[tuple[int, int, int], FrameSet] = {}
+        for kind in ("bias_lit", "bias"):
+            for fs in sets:
+                if fs.kind == kind and len(fs.paths) >= 2:
+                    bias_index[fs.key[:3]] = fs
 
         results: list[GainResult] = []
         for fs in sets:

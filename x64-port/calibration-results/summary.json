@@ -1,0 +1,126 @@
+{
+  "camera": "ToupTek ATR2600C (IMX571)",
+  "date": "2026-09-21",
+  "temperature_c": 0.0,
+  "ultra_mode": true,
+  "high_fullwell": false,
+  "bit_scaling": true,
+  "native_bits": 14,
+  "note": "sigma from dark bias sweeps (252 frames/mode); e-/ADU from flat pairs, 4 levels/gain",
+  "rows": [
+    {
+      "gain": 100,
+      "lcg": {
+        "eadu": 0.7794,
+        "sigma_adu": 3.07,
+        "rn_e": 2.39,
+        "fw_e": 51078,
+        "dr_db": 86.6,
+        "offset": 200
+      },
+      "hcg": {
+        "eadu": 0.2531,
+        "sigma_adu": 3.68,
+        "rn_e": 0.93,
+        "fw_e": 16587,
+        "dr_db": 85.0,
+        "offset": 200
+      }
+    },
+    {
+      "gain": 150,
+      "lcg": {
+        "eadu": 0.5199,
+        "sigma_adu": 4.34,
+        "rn_e": 2.26,
+        "fw_e": 34072,
+        "dr_db": 83.6,
+        "offset": 200
+      },
+      "hcg": {
+        "eadu": 0.1695,
+        "sigma_adu": 5.32,
+        "rn_e": 0.9,
+        "fw_e": 11108,
+        "dr_db": 81.8,
+        "offset": 500
+      }
+    },
+    {
+      "gain": 200,
+      "lcg": {
+        "eadu": 0.3891,
+        "sigma_adu": 5.55,
+        "rn_e": 2.16,
+        "fw_e": 25500,
+        "dr_db": 81.4,
+        "offset": 500
+      },
+      "hcg": {
+        "eadu": 0.1274,
+        "sigma_adu": 6.9,
+        "rn_e": 0.88,
+        "fw_e": 8349,
+        "dr_db": 79.6,
+        "offset": 500
+      }
+    },
+    {
+      "gain": 300,
+      "lcg": {
+        "eadu": 0.2588,
+        "sigma_adu": 7.92,
+        "rn_e": 2.05,
+        "fw_e": 16960,
+        "dr_db": 78.4,
+        "offset": 500
+      },
+      "hcg": {
+        "eadu": 0.0848,
+        "sigma_adu": 10.0,
+        "rn_e": 0.85,
+        "fw_e": 5557,
+        "dr_db": 76.3,
+        "offset": 500
+      }
+    },
+    {
+      "gain": 1000,
+      "lcg": {
+        "eadu": 0.0772,
+        "sigma_adu": 24.21,
+        "rn_e": 1.87,
+        "fw_e": 5059,
+        "dr_db": 68.6,
+        "offset": 1500
+      },
+      "hcg": {
+        "eadu": 0.0253,
+        "sigma_adu": 30.0,
+        "rn_e": 0.76,
+        "fw_e": 1658,
+        "dr_db": 66.8,
+        "offset": 2000
+      }
+    },
+    {
+      "gain": 2000,
+      "lcg": {
+        "eadu": 0.0383,
+        "sigma_adu": 44.33,
+        "rn_e": 1.7,
+        "fw_e": 2510,
+        "dr_db": 63.4,
+        "offset": 2500
+      },
+      "hcg": {
+        "eadu": 0.0126,
+        "sigma_adu": 57.69,
+        "rn_e": 0.73,
+        "fw_e": 826,
+        "dr_db": 61.1,
+        "offset": ">2500"
+      }
+    }
+  ]
+}

@@ -7,21 +7,27 @@ Scope: the `x64-port/` Linux port effort. The solution-wide map is
 [`README.md`](README.md) first for what the port is, then this file for how to
 work on it.
 
-## The two machines
+## The three machines
 
-This work spans two hosts, and confusing them wastes time.
+This work spans three hosts, and confusing them wastes time.
 
-| Host | Role | PINS source | Notes |
+| Host | Role | Hardware | Notes |
 |---|---|---|---|
-| **adam** | WSL2 dev workstation | `~/pins` (this repo) | builds, edits, commits. No telescope. |
-| **quark** | Chuwi Minibook X N150, the observatory box | `~/pins/build/pins` | runs PINS with **mount and camera attached**. Clone+pull only, never edited. |
+| **adam** | WSL2 dev workstation | — | `~/pins` (this repo). Builds, edits, commits. No telescope. |
+| **astrobit** | the observatory box | Intel N97 mini PC, CachyOS | runs PINS with **mount and camera attached**. `~/pins` there is an install tree, *not* a git checkout. |
+| **quark** | field control laptop | Chuwi Minibook X N150, CachyOS | drives astrobit's web UI in the field. Runs no PINS instance of its own. |
 
-`ssh quark` works (also `stefano@192.168.1.36`). Quark's checkout is usually
-several commits behind adam; it is a deployment target, not a worktree. Check
-`git log --oneline -1` on both before assuming they match.
+`ssh stefano@astrobit` works from adam; the web UI is at
+`http://astrobit:5000`. `quark` does not resolve from adam — it is a field
+client on the observing network, not a deployment target.
 
 **Anything that must be verified against real hardware or a running PINS has to
-run on quark.** Building and reading code happens on adam.
+run on astrobit.** Building and reading code happens on adam. Quark is a
+browser; nothing in this repo needs to run there.
+
+> Revisions of this file before 2026-09-20 called quark "the observatory box".
+> That was wrong: quark is the control laptop, astrobit is the machine with the
+> telescope attached. Corrected against `hostnamectl`/`lscpu` on both hosts.
 
 ## Build and test (adam)
 
@@ -50,15 +56,15 @@ The installer is staged; re-run one stage rather than the lot:
 ./setup-pins-x64.sh <stage>   # deps indi pins plugins astap external verify
 ```
 
-## Verifying against the running instance (quark)
+## Verifying against the running instance (astrobit)
 
 PINS serves two ports: **1888** = `ninaAPI` (`/v2/api/...`), **5000** =
 Touch-N-Stars (its own `/api/...` plus the Vue app). They are different servers
 with different route namespaces — a 404 on one says nothing about the other.
 
 ```bash
-ssh quark 'curl -s http://localhost:1888/v2/api/equipment/mount/info'
-ssh quark 'curl -s http://localhost:1888/v2/api/profile/show?active=true'
+ssh stefano@astrobit 'curl -s http://localhost:1888/v2/api/equipment/mount/info'
+ssh stefano@astrobit 'curl -s http://localhost:1888/v2/api/profile/show?active=true'
 ```
 
 Read-only endpoints are safe. **`/framing/slew` and anything under

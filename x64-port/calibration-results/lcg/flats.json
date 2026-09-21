@@ -1,0 +1,386 @@
+[
+  {
+    "gain": 100,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.028,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-45-22__0.00_0.03s_0000.fits"
+  },
+  {
+    "gain": 100,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.028,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-45-29__0.00_0.03s_0000.fits"
+  },
+  {
+    "gain": 100,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-45-37__0.10_0.00s_0000.fits"
+  },
+  {
+    "gain": 100,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-45-44__0.10_0.00s_0000.fits"
+  },
+  {
+    "gain": 100,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.07,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-45-51__0.10_0.07s_0000.fits"
+  },
+  {
+    "gain": 100,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.07,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-45-58__0.10_0.07s_0000.fits"
+  },
+  {
+    "gain": 100,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-46-06__0.10_0.00s_0000.fits"
+  },
+  {
+    "gain": 100,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-46-13__0.10_0.00s_0000.fits"
+  },
+  {
+    "gain": 100,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.136,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-46-20__0.10_0.14s_0000.fits"
+  },
+  {
+    "gain": 100,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.136,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-46-28__0.10_0.14s_0000.fits"
+  },
+  {
+    "gain": 100,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-46-35__0.10_0.00s_0000.fits"
+  },
+  {
+    "gain": 100,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-46-42__0.10_0.00s_0000.fits"
+  },
+  {
+    "gain": 100,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.19,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-46-49__0.10_0.19s_0000.fits"
+  },
+  {
+    "gain": 100,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.19,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-46-57__0.00_0.19s_0000.fits"
+  },
+  {
+    "gain": 100,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-47-04__0.00_0.00s_0000.fits"
+  },
+  {
+    "gain": 100,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-47-11__0.00_0.00s_0000.fits"
+  },
+  {
+    "gain": 1000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.0028,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-47-19__0.00_0.00s_0000.fits"
+  },
+  {
+    "gain": 1000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.0028,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-47-26__0.00_0.00s_0000.fits"
+  },
+  {
+    "gain": 1000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-47-33__0.00_0.00s_0000.fits"
+  },
+  {
+    "gain": 1000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-47-41__0.00_0.00s_0000.fits"
+  },
+  {
+    "gain": 1000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.007,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-47-48__0.00_0.01s_0000.fits"
+  },
+  {
+    "gain": 1000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.007,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-47-55__0.00_0.01s_0000.fits"
+  },
+  {
+    "gain": 1000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-48-02__0.00_0.00s_0000.fits"
+  },
+  {
+    "gain": 1000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-48-10__0.00_0.00s_0000.fits"
+  },
+  {
+    "gain": 1000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.0136,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-48-17__0.00_0.01s_0000.fits"
+  },
+  {
+    "gain": 1000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.0136,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-48-24__0.00_0.01s_0000.fits"
+  },
+  {
+    "gain": 1000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-48-32__0.00_0.00s_0000.fits"
+  },
+  {
+    "gain": 1000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-48-39__0.00_0.00s_0000.fits"
+  },
+  {
+    "gain": 1000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.019,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-48-46__0.00_0.02s_0000.fits"
+  },
+  {
+    "gain": 1000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.019,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-48-54__0.00_0.02s_0000.fits"
+  },
+  {
+    "gain": 1000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-49-01__0.00_0.00s_0000.fits"
+  },
+  {
+    "gain": 1000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-49-08__0.00_0.00s_0000.fits"
+  },
+  {
+    "gain": 2000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.0014,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-49-16__0.00_0.00s_0000.fits"
+  },
+  {
+    "gain": 2000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.0014,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-49-23__0.00_0.00s_0000.fits"
+  },
+  {
+    "gain": 2000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-49-30__0.00_0.00s_0000.fits"
+  },
+  {
+    "gain": 2000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-49-37__0.00_0.00s_0000.fits"
+  },
+  {
+    "gain": 2000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.0035,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-49-45__0.00_0.00s_0000.fits"
+  },
+  {
+    "gain": 2000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.0035,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-49-52__0.00_0.00s_0000.fits"
+  },
+  {
+    "gain": 2000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-49-59__0.00_0.00s_0000.fits"
+  },
+  {
+    "gain": 2000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-50-06__0.00_0.00s_0000.fits"
+  },
+  {
+    "gain": 2000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.0068,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-50-14__0.00_0.01s_0000.fits"
+  },
+  {
+    "gain": 2000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.0068,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-50-21__0.00_0.01s_0000.fits"
+  },
+  {
+    "gain": 2000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-50-28__0.00_0.00s_0000.fits"
+  },
+  {
+    "gain": 2000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-50-36__0.00_0.00s_0000.fits"
+  },
+  {
+    "gain": 2000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.0095,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-50-43__0.00_0.01s_0000.fits"
+  },
+  {
+    "gain": 2000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "flat",
+    "exposure": 0.0095,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-50-50__0.00_0.01s_0000.fits"
+  },
+  {
+    "gain": 2000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-50-57__0.00_0.00s_0000.fits"
+  },
+  {
+    "gain": 2000,
+    "offset": 2500,
+    "readout_mode": 0,
+    "kind": "bias",
+    "exposure": 0.0001,
+    "file": "/home/stefano/camera-analysis/lcg/flats/2026-09-21_17-51-05__0.00_0.00s_0000.fits"
+  }
+]

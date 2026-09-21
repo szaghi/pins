@@ -1493,3 +1493,1025 @@ pass: the "has sequencer instructions" verdict is followed by an explicit note
 that authoring still requires Windows or hand-written JSON. The generalised
 rule, in PLUGINS.md: a plugin is useful here only via `IPluggableBehavior`, or
 `IDockableVM` *plus* a Vue counterpart in Touch-N-Stars.
+
+## HOST TOPOLOGY CORRECTED (2026-09-20)
+
+Earlier entries in this log, and the host table in `CLAUDE.md`, described
+**quark** as "the observatory box" and left astrobit's hardware "undecided".
+Both were wrong. Verified over ssh on 2026-09-20:
+
+| Host | Role | Hardware | OS |
+|---|---|---|---|
+| adam | build/dev | WSL2 | Ubuntu 24.04 |
+| **astrobit** | **observatory box, telescope attached** | Intel N97 mini PC | CachyOS |
+| **quark** | **field control laptop** | Chuwi Minibook X N150 | CachyOS |
+
+Evidence from `ssh stefano@astrobit`:
+
+- `hostnamectl` -> `Static hostname: astrobit`, `Operating System: CachyOS`
+  (chassis reports `laptop`, which is the barebone's DMI string, not the role)
+- `lscpu` -> `Model name: Intel(R) N97`, 4 cores, x86_64
+- `~/pins` exists but `git -C ~/pins log` fails with *not a git repository* —
+  it is an **install tree**, not a checkout. Do not expect to diff it
+  against adam.
+- live services: `NINA` pid 599 listening on `1888` and `5000`,
+  `indiserver -v -p 7624 -m 1000 -f /tmp/indiFIFO` pid 614
+- `lsusb`: `0547:13da ... USB3.0 Camera` (ToupTek ATR2600C) and
+  `0547:14ad ... AUTOFOCUSER`
+
+`quark` does not resolve in DNS from adam; it reaches astrobit on the observing
+network. It runs no PINS instance, so it is not a verification target.
+
+Entries dated before today that say "verified on the quark" refer to a machine
+that was then serving as the test target. They are not retroactively wrong
+about *what* was verified, but the hardware-attached claims now belong to
+astrobit.
+
+### Camera parameters as the driver actually reports them (astrobit, 2026-09-20)
+
+From `GET /v2/api/equipment/camera/info` with the ATR2600C connected:
+
+```
+GainMin 100   GainMax 10000   Gain 100 (default)
+OffsetMin 0   OffsetMax 7936  Offset 0 (default)
+BitDepth 16   ElectronsPerADU NaN
+ReadoutModes ["Low Conversion Gain", "High Conversion Gain"], ReadoutMode 1
+ReadoutModeForNormalImages 0, ReadoutModeForSnapImages 0
+SensorType RGGB, 6224x4168, PixelSize 3.76
+SupportedActions include "Ultra Mode", "High Fullwell Mode"
+```
+
+Consequences for anyone porting gain/offset numbers from Windows tooling:
+
+- **The gain scale is ToupTek-native percent (100 = unity, 10000 = 100x), not
+  the ZWO 0.1 dB scale SharpCap reports.** A gain figure copied from SharpCap
+  is on a different axis and means a different amplification here.
+- **Offset defaults to 0 with a 0..7936 range.** 7936 = 31*256, i.e. ToupTek
+  offset units scaled to 16 bit. Offset 0 clips the left tail of the bias
+  histogram; it is not a safe default.
+- `ElectronsPerADU` is `NaN`: the driver publishes no conversion gain, so
+  e-/ADU has to be measured, not read.
+- The current `ReadoutMode` (1, HCG) differs from
+  `ReadoutModeForNormalImages` (0, LCG). The two modes are distinct noise
+  regimes and must be characterised separately.
+- `Ultra Mode` / `High Fullwell Mode` change full well and linearity. Record
+  their state and hold it fixed across any calibration run.
+
+## CAMERA CALIBRATION HARNESS ADDED (2026-09-20)
+
+`camera-analysis.sh` (acquire, runs on astrobit) + `camera_analysis.py`
+(analyse, ~2060 lines). Replaces SharpCap Sensor Analysis, which is Windows-only
+and, more importantly, reports gain on the ZWO 0.1 dB scale -- the wrong axis for
+this camera. Nothing has yet run against the hardware.
+
+What it measures: minimum adequate offset per gain (the primary deliverable),
+read noise vs gain in ADU and e-, the HCG knee located empirically, conversion
+gain e-/ADU from flat pairs, full well and dynamic range. All statistics are
+computed per Bayer channel as well as globally, because on an RGGB sensor one
+channel can clip while the global histogram still looks healthy.
+
+Histograms are produced as PNGs (Agg by default, `--show` needs `ssh -X`):
+bias histograms with the clipped region shaded and the left tail zoomed, clipped
+fraction vs offset, read noise vs gain with the knee annotated, and a photon
+transfer curve when flats exist.
+
+### The estimator bug, which is the part worth remembering
+
+`--selftest` generates synthetic frames with known read noise and known e-/ADU
+and checks the estimators recover them. Its first run failed two MAD cases.
+The cause was not tolerance:
+
+**The MAD of integer data is itself an integer.** Camera frames are integers, so
+`1.4826 * MAD / sqrt(2)` can only land on multiples of ~1.048 ADU. A true sigma
+of 2.5 has a true MAD of 1.686, which must round to 1 or 2 -- giving 1.05 or
+2.10, never 2.5. Verified independently against an unquantised control:
+
+| true sigma | MAD, no dither | MAD, dithered |
+|---|---|---|
+| 1.0 | +4.8% | +8.3% |
+| 1.5 | **-30.1%** | +1.4% |
+| 2.5 | **-16.1%** | +0.6% |
+| 4.0 | +4.8% | +0.5% |
+| 8.0 | +4.8% | +0.2% |
+| 25.0 | +0.6% | +0.1% |
+
+The undithered values snap to multiples of 1.0484 (1x, 2x, 4x, 8x), which is the
+artefact made visible. The error is **negative in the low-noise regime** -- i.e.
+it understates read noise exactly in HCG, the part of the curve the whole
+exercise exists to locate. Loosening the tolerance would have hidden it.
+
+Fix: uniform dither on [-0.5, 0.5) before the MAD, applied only to
+integer-valued input, RNG seeded from the data so reports are reproducible.
+Below ~1 ADU neither variant is trustworthy; the docstring says so and the
+plain standard deviation is reported alongside.
+
+### Unverified surfaces
+
+No hardware run has happened, so these are assumptions, not facts:
+
+- the exact ninaAPI capture parameter behaviour
+- `set-gain` / `set-offset` / `set-readout` route names (`set-readout` failure
+  is non-fatal but reported loudly rather than silently ignored)
+- the `image-history` response shape; several spellings of the path key are
+  tried, with an mtime scan of the profile's `FilePath` tree as fallback
+
+The default offset sweep is 720 frames, roughly 36 GB and a couple of hours.
+Scout with a narrow gain list first.
+
+### Cooling
+
+The script refuses to run when `CoolerOn` is false or the sensor is more than
+2 C from target, unless `--force` is given (exit 4). Read noise barely cares
+about temperature; dark current does, and an uncooled run is not comparable
+with any later one -- which defeats the purpose of establishing a reference.
+
+## THE CAMERA PUBLISHES TWO TEMPERATURE TARGETS (2026-09-20)
+
+`/v2/api/equipment/camera/info` carries **both** `TemperatureSetPoint` and
+`TargetTemp`, and they do not have to agree. Observed live on astrobit with the
+ATR2600C properly cooled:
+
+```
+Temperature           -4.9
+TemperatureSetPoint   -5      <- what the cooler is regulating to
+TargetTemp            -10     <- a separate profile field, not being followed
+CoolerOn              True
+CoolerPower           70.5
+```
+
+`TemperatureSetPoint` is the value the cooler actually servos to. `TargetTemp`
+is a separate profile setting that the cooler may be ignoring outright.
+
+`camera-analysis.sh` checked `TargetTemp` and so **refused to run against a
+camera that was cooled and settled** -- sensor 0.1 C from its set point, cooler
+holding at 70%, and the script reported "COOLER OFF OR NOT SETTLED (temp -4.9C,
+target -10C)" and exited 4. A correct refusal guard firing on the wrong field is
+worse than no guard: it trains the operator to reach for `--force`, which then
+also suppresses the real uncooled case.
+
+Fixed: regulate against `TemperatureSetPoint`, fall back to `TargetTemp` only
+when no set point is published, and print which field is in use. The warning
+now also distinguishes "cooler is off" from "cooler on but not settled" instead
+of asserting both at once.
+
+Anything else reading a cooling target from this API should prefer
+`TemperatureSetPoint` for the same reason.
+
+## GAIN AND OFFSET REACH THE CAMERA BY TWO DIFFERENT ROUTES (2026-09-20)
+
+The obvious routes do not exist. Verified against the ninaAPI source and live
+hardware:
+
+```
+/equipment/camera/set-gain     404   <- no such route
+/equipment/camera/set-offset   404   <- no such route
+```
+
+`Camera.cs` defines only: `info`, `set-readout[/image|/snapshot]`, `cool`,
+`warm`, `abort-exposure`, `dew-heater`, `usb-limit`, `set-binning`,
+`capture`, `capture/statistics`.
+
+- **Gain** is a query field of `/equipment/camera/capture` (`[QueryField] int
+  gain`, Camera.cs:556). It is per-exposure; there is nothing to set up front
+  and nothing to restore.
+- **Offset** is not a capture field at all. The only route is
+  `/profile/change-value?settingpath=CameraSettings-Offset`. `CameraVM`
+  exposes it as `DefaultOffset` (CameraVM.cs:712) and `Capture()` pushes it to
+  the device with `SetOffset(sequence.Offset)` (CameraVM.cs:723).
+
+### The offset write reports success without being observable
+
+```
+GET /profile/change-value?settingpath=CameraSettings-Offset&newValue=400
+    -> {"Response":"Updated setting","StatusCode":200,"Success":true}
+GET /equipment/camera/info
+    -> "Offset": 0        <- unchanged, and stays unchanged
+```
+
+`info` reads `cam.GetInfo().Offset`, i.e. the **driver's** value, while the
+write lands on the **profile**. The two never reconcile, so the API can never
+confirm an offset change.
+
+The write does take effect. The frame captured immediately afterwards carried:
+
+```
+GAIN 150   OFFSET 400   READOUTM 'Low Conversion Gain'   CCD-TEMP -4.6
+```
+
+**The FITS header is the only evidence.** `capture_frame` now reads GAIN and
+OFFSET back from the header and discards any frame whose values do not match
+what was asked. Without that check a sweep would have produced 288 frames all
+at the same offset, each filed under the offset it was supposed to have, and a
+confident report built on them -- a silent failure of the worst kind, since
+every individual frame is valid and only the labelling is wrong.
+
+Also required on capture: `save=true` and `imageType=BIAS`. Without `save` the
+exposure happens and no file is written.
+
+### First real measurement, from the 4-frame smoke test
+
+gain 150, LCG, -4.8 C:
+
+```
+offset 400 -> median 400.0, min 232, max 573, zero pixels at 0
+sigma_read 4.32 ADU (MAD), 5.65 ADU (std)
+verdict: minimum adequate offset 400; offset 0 clips
+```
+
+The minimum sits 168 ADU below the median, so at offset 0 that tail is cut off
+against the floor. The camera's default offset of 0 is not usable.
+
+## THE CAPTURE ROUTE RENDERS A PREVIEW PNG ON EVERY EXPOSURE (2026-09-20)
+
+Symptom: a bias sweep failed exactly one frame per attempt, with the failures
+appearing to cluster at particular offsets. `/equipment/camera/info` reported
+`IsExposing: True` together with `CameraState: NoState` -- claiming to expose
+while reporting no state -- and no FITS was written. It looked like a stuck
+flag, and `abort-exposure` did clear it, which reinforced that reading.
+
+It was not stuck. It was **busy**.
+
+`Camera.cs:664` runs the capture inside `CaptureTask`, and that task does far
+more than expose and save. Unless `onlySaveRaw` is set it renders the full
+frame and writes it as a PNG beside the plugin assembly on **every** exposure
+(Camera.cs:690-697), autostretching first unless `skipAutoStretch` is set:
+
+```csharp
+IRenderedImage renderedImage = await AdvancedAPI.Controls.Imaging.PrepareImage(...);
+if (!onlySaveRaw) {
+    var encoder = BitmapHelper.GetEncoder(renderedImage.Image, -1);
+    using (FileStream fs = new FileStream(... $"temp.png", FileMode.Create))
+        encoder.Save(fs);
+}
+```
+
+For a 26 Mpx ATR2600C frame on an Intel N97 that render dominates a 0.1 ms
+bias exposure entirely. `IsExposing` stays True throughout, the next capture
+request is refused with 409 "Camera currently exposing", and that frame is
+lost. The preview is pure waste here: the analysis reads the FITS from disk.
+
+Fix, both required:
+
+```
+onlySaveRaw=true      -> no PNG render
+skipAutoStretch=true  -> no autostretch
+```
+
+Two diagnostic lessons worth keeping:
+
+1. **`IsExposing: True` + `CameraState: NoState` means busy, not stuck.** The
+   contradiction is not evidence of a lost flag. `abort-exposure` clearing it
+   proves only that the task was cancellable, not that it was phantom.
+2. The failures looked offset-dependent because the backlog accumulated
+   through the run, so late combinations failed and early ones did not. Any
+   per-frame cost that exceeds the loop interval produces this shape; the
+   clustering points at time, not at the parameter it appears to track.
+
+Fast bias frames through this API should always pass `onlySaveRaw=true`.
+
+## THE TOUPTEK SDK WEDGES, AND ONLY A PINS RESTART CLEARS IT (2026-09-20)
+
+Mid-sweep the camera stopped delivering images entirely. Every capture, at
+every exposure, failed identically:
+
+```
+CameraDownloadFailedException: Camera Timeout - Camera did not set image as
+ready after exposuretime + 60 seconds
+Exposure time: 0.0001, Type: BIAS, Gain: 100
+```
+
+Not a parameter problem. 0.001, 0.01, 0.1 and 1.0 s all failed the same way,
+each taking ~60 s to time out. The camera stayed `Connected: True`, `dmesg`
+showed no USB error, and the device stayed on the bus (`0547:13da`).
+
+`disconnect` + `connect` did NOT fix it. PINS reported "Successfully connected
+Camera. Id: ToupTek_tp-2-3-2-0547-13da ... Driver Version: 59.29331.20250824"
+and captures still timed out. The wedged state lives in the ToupTek SDK loaded
+into the PINS process, so it survives a device-level reconnect.
+
+**`stop-pins.sh` + `start-pins.sh` fixed it.** First capture after restart
+returned in 3 s and wrote a valid frame: GAIN 100, OFFSET 500, median 501.0,
+min 410, zero clipped pixels.
+
+Probable trigger: repeated `kill -9` of the acquisition script while a capture
+was in flight. Stop a sweep with SIGINT and let the trap run; if a `kill -9`
+was unavoidable, assume the SDK needs a PINS restart before trusting the next
+frame.
+
+### Two wrong diagnoses on the way, both worth recording
+
+1. **"The preview PNG render is starving the loop."** `Camera.cs:690` does
+   render and write a full-frame PNG on every capture unless `onlySaveRaw` is
+   set, and on an N97 that is genuinely expensive -- so the story fit. It was
+   still wrong: adding `onlySaveRaw=true&skipAutoStretch=true` changed
+   nothing. Keep the flags anyway (they remove real work this task never
+   needs), but they were not the fault.
+2. **"0.0001 s is below what the driver can actually do."** `ExposureMin`
+   reports 0.0001 and the failures all quoted it, so a too-short exposure
+   looked plausible. Also wrong: 1.0 s failed identically, and after the
+   restart 0.0001 s worked first time.
+
+The lesson both share: a mechanism that plausibly explains the symptom is not
+evidence that it caused it. The log line naming `CameraDownloadFailedException`
+was available before either guess and pointed at the download path, not at the
+parameters. Read the application log first.
+
+### Also confirmed here
+
+A 500 "Unknown error" from `/equipment/camera/capture` does NOT mean no frame
+was written. The recovery capture returned 500 and the FITS was on disk and
+valid. Check the file, not the status code.
+
+### Sweep hardening after the SDK wedge (2026-09-20)
+
+Two changes to `camera-analysis.sh` so a wedged SDK costs minutes, not an hour:
+
+- **A 500 response no longer discards the frame.** The script warns and then
+  checks the file and its header anyway, because a 500 "Unknown error" has
+  been observed alongside a perfectly valid FITS on disk. The header check
+  (GAIN/OFFSET must match what was asked) remains the real gate -- it is
+  stricter than any status code and inspects what actually matters.
+- **Five consecutive failures abort the sweep** with the exact restart
+  commands, rather than grinding through 288 frames at a 60 s timeout each.
+  Frames already in the manifest are kept, so a restart resumes rather than
+  starts over.
+
+The counter resets on every success, so scattered failures do not trip it;
+only a persistent fault does, which is the signature of the wedge.
+
+## LOG HELPERS ON STDOUT CORRUPTED EVERY MANIFEST RECORD (2026-09-20)
+
+`capture_frame` returns the FITS path by printing it, so the caller does
+`path=$(capture_frame ...)`. The log helpers -- `log info warn bad good` --
+all printed to **stdout**. Any diagnostic emitted from inside `capture_frame`
+was therefore captured into `$path` and written into the manifest.
+
+Latent from the start; it only fired once a warn() was added to a code path
+that triggers on every frame (the 500 handler). Result, from a live run:
+
+```json
+"file": "\u001b[1;33m   WARN capture returned 500 (gain 100 offset 0) --
+checking disk anyway\u001b[0m\n/home/stefano/Documents/N.I.N.A/2026-09-20/
+BIAS/2026-09-20_21-19-27__-1.90_0.00s_0000.fits"
+```
+
+**84 of 84 records corrupted**, with all 84 frames sitting valid on disk. The
+sweep reported "0 failed" throughout, because from its point of view nothing
+had failed -- and it had not. The data was fine; the index to it was not.
+
+Fixes, both applied:
+
+1. All five log helpers now write to **stderr** (`>&2`). The operator's view
+   is unchanged; the data path is clean. Any function that returns a value on
+   stdout must never share that channel with diagnostics.
+2. `manifest_append` refuses a path that is not absolute, contains a newline,
+   or does not exist, and warns instead. A bad record that reaches the
+   analyser fails hours later, far from its cause; refusing it fails now.
+
+This is the third failure of the session where a green status hid a broken
+result -- after the offset write that reported 200 without being observable,
+and the 500 that accompanied a perfectly good frame. The pattern to remember:
+**on this stack, status is not evidence. Check the artefact.**
+
+## THE COOLING FAULT WAS THE WEDGED SDK, NOT THE TEC (2026-09-21)
+
+Yesterday's blocker -- the TEC saturating at 91-97% and drifting warmer,
+unable to hold -2 C -- **does not reproduce after a clean PINS restart**.
+
+Measured today with PINS restarted at 08:04 and the camera freshly connected:
+
+```
+start      +35.0 C   cooler off
++10 s      +22.9 C   power 96.7%     (12 degrees in ten seconds)
+~6 min      -5.0 C   power 72.1%     stable, set point -5
+```
+
+**-5 C held at 72% power, with margin.** Yesterday the same camera could not
+hold -2 C at 96.7%. A colder set point reached with *less* effort is not
+possible if TEC capacity were the limit.
+
+The difference: yesterday PINS had been up for hours and the ToupTek SDK had
+wedged mid-session (see the 2026-09-20 entry on `CameraDownloadFailedException`).
+Best explanation, and it is an **inference, not a proof**: the same degraded SDK
+state that stopped image downloads was also degrading TEC regulation. Nothing
+here measures that link causally -- but it is the only account consistent with
+"-5 at 72% today, -2 at 96% yesterday, same hardware".
+
+Operationally: **if cooling underperforms, restart PINS before suspecting the
+hardware.**
+
+### A plausible diagnosis, killed in thirty seconds by one reading
+
+A source-only investigation found that `CoolerOn` sets the fan with
+`ToupTekAlikeCamera.cs:238-240`:
+
+```csharp
+// If fan is currently off, set it to its minimum speed
+if (MaxFanSpeed > 0 && FanSpeed == 0) {
+    FanSpeed = 1;
+}
+```
+
+against an SDK scale documented as `[1, max] = fan speed, set to "-1" means to
+use default fan speed`. Writing the minimum instead of the vendor default looked
+causally sufficient for a starved TEC.
+
+It is wrong for this camera. Reading the model record out of `libtoupcam.so`:
+
+```
+MAXFANSPEED : 1
+pixel size  : 3.76 x 3.76     (confirms the struct offsets, and the camera)
+```
+
+The ATR2600C's fan scale is **[0..1]** -- on or off, not adjustable. `FanSpeed = 1`
+is therefore the **maximum**, not the minimum. The code is correct here, and the
+WPF fan slider that exists on Windows offers nothing extra on this model.
+
+Probe method, for reuse (read-only, needs the camera free of PINS for live
+options; `get_Model` works regardless):
+
+```python
+lib = ctypes.CDLL(".../libtoupcam.so")
+lib.Toupcam_get_Model.restype = ctypes.c_void_p
+p = lib.Toupcam_get_Model(0x0547, 0x13da)   # ATR2600C
+# linux-x64 ModelV2: name(ptr8) flag(u64) then u32 x5 at +16:
+#   maxspeed preview still MAXFANSPEED ioctrol, then f32 xpixsz ypixsz at +36
+```
+
+The lesson is the same one as yesterday, applied successfully this time: a
+mechanism that plausibly explains the symptom is not evidence that it caused it.
+Thirty seconds of reading the device beat an afternoon of reading the source.
+
+### `OPTION_TEC_VOLTAGE_MAX` is still never written
+
+Repo-wide, the option is only ever read -- in `CoolerPowerUpdateTask`
+(`ToupTekAlikeCamera.cs:271-290`), once, before the loop, to compute
+`CoolerPower = 100 * voltage / maxVoltage`. So the reported percentage is a
+fraction of whatever cap the camera booted with, not of the hardware maximum.
+Not a problem today (72% with margin), but the number is not what it looks like.
+
+Note also `ToupTekSDKWrapper.get_Option` discards the HRESULT while the
+underlying call returns a bool and leaves `iValue = 0` on failure -- a failed
+read yields `maxVoltage = 0` and `CoolerPower` becomes infinity or NaN.
+
+### Encoding trap
+
+`ToupTekAlikeCamera.cs` is **ISO-8859, not UTF-8**. A plain `grep` in a UTF-8
+locale matches nothing on it and exits 0 -- a silent false negative. Use
+`LC_ALL=C grep -a`.
+
+### Correction, same day: the wedge was not the whole story (2026-09-21)
+
+The entry above concluded that yesterday's cooling shortfall was the wedged SDK.
+That was **half right, and the half it got wrong matters.**
+
+A clean restart does restore the TEC's ability to *reach* a cold set point: from
++35 C it pulled to -5.0 C and held it at 72% power, at rest. But once the bias
+sweep started, the drift came straight back:
+
+```
+at rest, before the sweep      -5.0 C   72% power
+50 frames in                   -4.2 C   96.7% power
+```
+
+Frame headers over that run read -4.50 to -4.30: **the frames were never at the
+set point at all.** Continuous readout of a 26 Mpx sensor puts in more heat than
+the TEC can reject at -5 C, so the set point is not merely unstable under load,
+it is unreachable.
+
+So there are two distinct effects, and yesterday they were conflated:
+
+1. **The SDK wedge** stops downloads outright and (inferred) degrades regulation.
+   Cleared only by restarting PINS.
+2. **Thermal load under continuous readout** raises the floor of what the TEC can
+   hold. This is physics, not a defect, and no restart fixes it.
+
+Practical rule for calibration runs: **pick a set point the TEC holds at 60-70%
+while idle, so it still has headroom once readout starts.** For offset and
+read-noise work the absolute temperature is irrelevant -- stability and an
+accurate record of it are what matter. -5 C is fine for imaging, where duty
+cycle is low; it is the wrong choice for a back-to-back sweep of hundreds of
+frames.
+
+The run was restarted at a 0 C set point for this reason.
+
+Also confirmed in passing: the `IsExposing`-stuck guard added yesterday fired
+correctly during this run ("IsExposing stuck True for 20s -- aborting the
+phantom exposure") and the sweep recovered on its own, losing one frame out of
+50. And SIGINT stopped the sweep cleanly with the trap running -- no `kill -9`
+was needed, which is the behaviour the earlier entry asks for.
+
+## WHAT WEDGES THE SDK IS ABORTING A SWEEP, NOT `kill -9` (2026-09-21)
+
+The 2026-09-20 entry blamed the wedge on `kill -9` of the acquisition script
+mid-capture, and told future readers to stop sweeps with SIGINT. **That was
+wrong, and following it does not help.**
+
+Today's sweep #4 was stopped with SIGINT. The trap ran, gain and offset were
+restored, the processes exited in order. No `kill -9` anywhere. The very next
+sweep wedged on frame 1 with the same `CameraDownloadFailedException`, and only
+`stop-pins.sh` + `start-pins.sh` cleared it.
+
+Four runs, and the pattern is about interruption, not about the signal:
+
+| run | outcome |
+|---|---|
+| #1 (09-20) | 16/48 frames failed, then wedged |
+| #2 (09-20) | 84 records corrupted by the stdout bug |
+| #3 (09-21, -5 C) | 50 frames, 1 lost, thermal drift -- **aborted by the operator** |
+| #4 (09-21, 0 C) | wedged on frame 1, immediately after #3's clean SIGINT |
+
+**Aborting a sweep part-way wedges the ToupTek SDK regardless of how it is
+stopped.** The driver is left in a state it does not recover from, and every
+subsequent capture times out after 60 s.
+
+The operational consequence is counter-intuitive and worth stating plainly:
+**an abort costs more than whatever prompted it.** Run #3 was healthy -- 50
+frames, one loss -- and was stopped over a 0.8 C thermal drift that would have
+cost nothing but a footnote in the report. That abort cost a PINS restart, a
+re-cool from +12 C, and the whole dataset.
+
+Plan a sweep so it can run to completion, and then let it. If the temperature
+drifts, record it and judge afterwards.
+
+Not yet known: whether the wedge is caused by an abort during the exposure
+window specifically, by the partial USB transfer it leaves behind, or by
+something in how `CaptureTask` is torn down. Establishing that needs a
+deliberate experiment, not another interrupted calibration run.
+
+### `CoolerPower` is not comparable across sessions
+
+Repeatedly misleading today, including to me. `ToupTekAlikeCamera.cs:271-290`
+reads `OPTION_TEC_VOLTAGE_MAX` **once**, before its polling loop, and reports
+`CoolerPower = 100 * voltage / maxVoltage`. It is a fraction of whatever cap the
+camera booted with, not of the hardware's capability, and PINS never writes that
+cap.
+
+Observed on one camera in one morning: 72% holding -5 C, 78.7% holding 0 C,
+93.4% holding 0 C after a restart, 96.7% failing to hold -2 C. These numbers do
+not form a scale. **Judge cooling by temperature against set point, never by
+the power figure.** I used a <70% power threshold as a readiness criterion
+earlier today; that was meaningless.
+
+## THE "CAMERA COOL DOWN" TOGGLE DOES NOT MEAN THE COOLER IS ON (2026-09-21)
+
+Observed in Touch-N-Stars with the TEC actively holding 0 C at ~93% power:
+
+```
+Cooler Status: Active - At target temp (0°C)     <- correct, live
+Camera cool down                        [ OFF ]  <- reads as "cooling is off"
+Target temperature (°C)                    [-2]  <- profile default, not the live set point
+```
+
+The toggle is **off by design** once the camera is stable at target.
+`Touch-N-Stars/src/components/camera/settingsCameraCooler.vue:330-336`:
+
+```javascript
+// Nur stabiles AtTargetTemp berücksichtigen
+if (isStableAtTarget.value) {
+  cameraStore.buttonCoolerOn = false;
+  cameraStore.buttonWarmingOn = false;
+  console.log('At target temp (stable)');
+  return;
+}
+```
+
+`checkButtonStatus()` does read `store.cameraInfo.CoolerOn` first and clears the
+toggle when the cooler really is off (`:324`), so the OFF state is ambiguous: it
+means *either* "cooler off" *or* "cooler on and already at target". The toggle
+tracks **a transition in progress**, not TEC state, while its label
+("Camera cool down") reads as the latter.
+
+Two consequences, the second worse than the first:
+
+1. Seeing OFF invites turning it on, which applies
+   `CameraSettings.Temperature` from the profile -- **-2 here, not the 0 the
+   camera is actually holding** (the cooling was commanded imperatively via
+   `/equipment/camera/cool?temperature=0`, which does not write the profile).
+   That would move the sensor mid-campaign.
+2. If the TEC ever loses target during a session, `isStableAtTarget` goes false
+   and the toggle switches **ON while cooling is getting worse**. An indicator
+   that lights up on degradation and goes dark on success inverts its own
+   meaning at exactly the moment it matters.
+
+**Read the green status line, not the toggle.** `Cooler Status: Active - At
+target temp (0°C)` is live and correct.
+
+This is the same two-fields-named-target confusion documented on 2026-09-20,
+surfacing in the UI: `TemperatureSetPoint` (live, what the TEC servos to) and
+`TargetTemp` / `CameraSettings.Temperature` (profile default) disagree freely,
+and the UI shows one in the status line and the other in the input box.
+
+Not patched. Touch-N-Stars is a third-party project; a fix belongs upstream
+(have the toggle follow `CoolerOn` and let the status line carry the
+transition), not as fork divergence.
+
+## BLOCKED SWEEP: 42-FRAME BLOCKS WITH A PAUSE BETWEEN THEM (2026-09-21)
+
+The SDK gives out after roughly 50 consecutive captures — measured twice, at 50
+and 53 frames, with and without operator interruption. The sweep is therefore
+organised so no unbroken run gets near that:
+
+```
+one block = one gain x 7 offsets x 6 frames = 42 frames
+between blocks: CAMANA_BLOCK_PAUSE (default 45 s), then log the sensor temp
+```
+
+7 offsets x 8 frames would be 56 — over the threshold, so the pause would
+always arrive too late. `CAMANA_NBIAS=6` is what makes the block fit; six
+frames still give three independent pairs for read noise.
+
+New knobs: `CAMANA_BLOCK_PAUSE`, `CAMANA_RECOVERY_PAUSE`, `CAMANA_MAX_RECOVERY`,
+`CAMANA_SETPOINT`, `CAMANA_RECOOL`.
+
+`recover_sdk()` escalates in place rather than demanding a restart:
+abort-exposure → idle pause → disconnect/reconnect with the set point
+re-applied, up to `CAMANA_MAX_RECOVERY` times. Expectations are low for the
+third rung — a reconnect did **not** clear the wedge on 2026-09-20, because the
+state lives in the SDK loaded into the PINS process — but the alternative is
+abandoning the run.
+
+Default offsets are now `0 200 500 1000 1500 2000 2500`. **0 is deliberate**
+even though it is already known to clip ~40% of pixels: without a TOO LOW row
+at each gain the analyser can only report the lowest offset it tested, not that
+it is the minimum adequate one. One clipping row per gain is what turns
+"minimum" into a measurement.
+
+### The pre-flight probe, and how it produced a convincing false alarm
+
+A wedged SDK fails every capture after a 60 s timeout, so starting a sweep on
+one burns a minute per frame and the failure looks like a problem with the
+first gain/offset rather than with the driver. `stage_bias` now takes one
+throwaway frame first and refuses to start if it fails.
+
+The first version of that probe **reported a wedged SDK against a perfectly
+healthy driver**:
+
+```
+probing the SDK before starting
+WARN frame says OFFSET=200, asked 0 -- discarding
+WARN the probe frame failed: the SDK is wedged before the sweep began.
+FAIL refusing to start against a wedged SDK
+```
+
+The frame was captured and written correctly. The probe asked for offset 0
+while the camera still carried offset 200 from the previous run's restore, and
+`capture_frame`'s header check — added the day before precisely to catch
+mislabelled frames — correctly discarded it. The probe simply never applied the
+offset, unlike the main loop. Cost: one unnecessary PINS restart.
+
+This is the second time in two days that **a correct guard acting on a wrong
+premise produced a convincing false alarm**: the first was the cooling check
+reading `TargetTemp` instead of `TemperatureSetPoint` and refusing to run
+against a properly cooled camera. When a guard fires, check its premise before
+believing its conclusion.
+
+### First block: the pause works
+
+```
+42/42 frames, 0 recoveries, sensor 0.0 C
+```
+
+Gain 100 complete across all seven offsets with no wedge, where an unbroken
+sweep had previously died at 50-53 frames. Provisional evidence that the limit
+is consecutive captures rather than total captures, and that a pause resets it.
+
+## THREE READOUT ROUTES, ONE OF THEM ACTUALLY AFFECTS CAPTURES (2026-09-21)
+
+```
+/equipment/camera/set-readout            -> cam.SetReadoutMode(mode)            Camera.cs:189
+/equipment/camera/set-readout/image      -> ReadoutModeForNormalImages = mode   Camera.cs:217
+/equipment/camera/set-readout/snapshot   -> ReadoutModeForSnapImages = mode     Camera.cs:245
+```
+
+Only `/set-readout/image` changes what a capture uses. Verified by reading
+`READOUTM` out of the resulting FITS:
+
+```
+GET /set-readout?mode=1        -> 200 "Readout mode updated"
+    next frame                 -> READOUTM: Low Conversion Gain      <- unchanged
+GET /set-readout/image?mode=1  -> 200 "Readout mode updated"
+    next frame                 -> READOUTM: High Conversion Gain     <- correct
+```
+
+`camera-analysis.sh` was calling the plain route, so `CAMANA_READOUT=1` was a
+no-op and every sweep ran in LCG regardless. Now fixed.
+
+**And once more, `/equipment/camera/info` does not reflect the write.** After a
+successful `/set-readout/image?mode=1` it still reported `ReadoutMode 0` and
+`ReadoutModeForNormalImages 0` while the frames were genuinely HCG. This is the
+**third** instance of the same pattern on this API:
+
+| write | API says | reality |
+|---|---|---|
+| offset via `/profile/change-value` | `info` keeps the old value forever | FITS header shows the new one |
+| capture returning 500 | "Unknown error" | a valid FITS is on disk |
+| readout via `/set-readout/image` | `info` keeps reporting 0 | FITS `READOUTM` shows HCG |
+
+The rule for this stack, now earned three times over: **the FITS header is the
+only honest source. Verify the artefact, never the status.**
+
+`current_readout()` consequently trusts the requested `CAMANA_READOUT` over
+`camera/info`, and the analyser cross-checks `READOUTM` from the frames, so a
+mismatch surfaces in the report instead of being baked silently into the
+manifest.
+
+### First HCG data point
+
+gain 100, offset 0, 0.3 C: **10,763,493 clipped pixels in HCG** against
+**10,390,851 in LCG** at the same settings. HCG clips slightly harder, which is
+what a different read-noise regime should do. The full comparison follows the
+sweep.
+
+## HCG IS NOISIER THAN LCG AT EVERY GAIN (2026-09-21)
+
+Both sweeps: 252 frames, 0 failures, 0 SDK recoveries, sensor pinned at 0.0 C
+throughout. Readout mode verified from the FITS `READOUTM` keyword, not from
+the API.
+
+| gain | sigma_read LCG (ADU, MAD) | sigma_read HCG | delta | min offset LCG | min offset HCG |
+|---:|---:|---:|:--|---:|---:|
+| 100 | 3.08 | 3.68 | +19% | 200 | 200 |
+| 150 | 4.34 | 5.32 | +23% | 200 | 500 |
+| 200 | 5.56 | 6.90 | +24% | 500 | 500 |
+| 300 | 7.92 | 10.00 | +26% | 500 | 500 |
+| 1000 | 24.22 | 30.00 | +24% | 1500 | 2000 |
+| 2000 | 44.35 | 57.69 | +30% | 2500 | none adequate at <=2500 |
+
+The mode PINS labels **"High Conversion Gain" is consistently the worse one**,
+by a steady 19-30%. On an IMX571 HCG is supposed to be the low-read-noise mode,
+so either the label is inverted relative to the sensor's own HCG/LCG, or this
+readout mode changes something else as well.
+
+**Do not conclude from this that HCG is the wrong choice.** These are ADU, and
+ADU are not electrons. If HCG really does convert with more gain, 3.68 ADU
+there could be fewer electrons than 3.08 ADU in LCG. Settling it needs e-/ADU,
+which needs flats. Until then the honest statement is: *in ADU, at a fixed
+offset scale, HCG is noisier.*
+
+Practical recommendation meanwhile: stay in LCG
+(`ReadoutModeForNormalImages = 0`, already the default) with the per-gain
+offsets above, or a flat 2500 if you would rather not retune per target.
+
+No knee was detected in either mode: read noise rises monotonically with gain
+in both. An earlier partial run (53 frames) reported a 29.1% drop between gain
+100 and 150 and called it a conversion-gain transition -- that was an artefact
+of a short, unevenly sampled dataset, and the full sweeps contradict it.
+
+## I DELETED THE FIRST LCG DATASET (2026-09-21)
+
+Before starting the HCG sweep I wiped all 252 LCG frames with a find-delete
+over the acquisition tree. I had copied the manifest and the report, but not
+the frames.
+
+The archive copy was broken as well: copying the output directory into an
+existing `lcg/out` nested it rather than replacing it, so what looked like the
+archived LCG report was a later copy of the HCG run's output. Reading it back
+produced two identical tables, which I then reported as a physical finding --
+"the two datasets are numerically identical" -- when it was one file read
+twice. The file timestamps (15:30 on the "archive", 10:21 on the "original")
+disproved it in one line, and I had not looked.
+
+Three failures compounding:
+
+1. **Deleting source data before verifying the archive.** The verification is
+   two commands and I skipped them.
+2. **Recursive copy into an existing directory is not idempotent.** Clear the
+   destination first, or copy the directory's contents rather than the
+   directory.
+3. **Trusting a file's contents without checking its mtime.** This whole
+   session has been about not trusting a status without checking the artefact;
+   I did not apply it to my own archive.
+
+Recovery: the LCG *numbers* survived because they had been quoted in full in
+conversation, but the frames could not be re-analysed. The LCG sweep is being
+re-run so both datasets exist as data, not just as tables.
+
+**Rule going forward: archive by MOVING frames into a per-mode directory, and
+verify record and file counts before any delete.** Disk has 199 GB free; 13 GB
+per dataset is not worth the risk.
+
+## CONVERSION GAIN MEASURED: HCG IS THE BETTER MODE, IN ELECTRONS (2026-09-21)
+
+Flat pairs with matching bias pairs, four signal levels per gain, central
+2000x3000 region, at 0.0 C. Conversion gain from
+`g = signal / (var(f1-f2)/2 - var(b1-b2)/2)`.
+
+| gain | e-/ADU LCG | e-/ADU HCG | ratio | RN LCG (e-) | RN HCG (e-) |
+|---:|---:|---:|---:|---:|---:|
+| 100 | 0.7794 +-0.3% | 0.2531 +-0.6% | 3.08 | 4.92 | **4.10** |
+| 1000 | 0.0772 +-0.3% | 0.0253 +-0.5% | 3.05 | 4.60 | **3.99** |
+| 2000 | 0.0383 +-1.0% | 0.0126 +-0.8% | 3.04 | 4.51 | **3.95** |
+
+**HCG has 12-17% lower read noise in electrons at every gain.** The earlier
+conclusion from the bias sweeps -- "HCG is noisier" -- was wrong: it compared
+ADU, and HCG's ADU are worth a third of an LCG ADU. The label is accurate.
+
+```
+LCG:  3.07 ADU x 0.7794 e-/ADU = 2.39 e-
+HCG:  3.68 ADU x 0.2531 e-/ADU = 0.93 e-
+```
+
+Two independent confirmations of the 3x amplification: the e-/ADU ratio
+(3.08/3.05/3.04) and the exposure needed for the same signal level
+(0.2/0.065 = 3.1, 0.02/0.0065 = 3.1, 0.01/0.0033 = 3.0).
+
+### Other findings from the same data
+
+**The ToupTek percent gain scale is exactly linear.** 0.7794/0.0772 = 10.1
+against 10 expected; 0.0772/0.0383 = 2.02 against 2. Gain 1000 really is 10x
+gain 100 -- measured, not assumed.
+
+**Read noise in electrons is nearly flat with gain** (4.5-4.9 e- LCG,
+3.9-4.1 e- HCG), falling slightly at high gain. The fourteen-fold rise seen in
+ADU was pure amplification. This is the number that compares with a datasheet
+or with SharpCap output; the ADU figures are not.
+
+**BitScaling checks out.** 0.78 e-/ADU at unity gain looks low until you
+account for the left shift by 2: in native 14-bit ADU it is 3.1 e-/ADU, which
+is a sane IMX571 value. An independent confirmation of what the source said.
+
+**HCG's full well is 3x smaller**, and it shows up directly: at gain 2000 the
+first HCG probe at 74% median already had 141,738 saturated pixels, because the
+right-hand tail reaches full scale much sooner. Flat levels for HCG had to be
+capped at ~58% rather than 70%.
+
+### The trade-off
+
+| | LCG | HCG |
+|---|---|---|
+| read noise | 4.5-4.9 e- | **3.9-4.1 e-** |
+| full well | **3x** | 1x |
+| offset needed | 200-2500 | 200 to beyond 2500 |
+| Bayer channel spread | **0.7%** | 3% |
+
+Neither wins outright. HCG for faint targets on long subs where read noise
+dominates; LCG for fields with bright stars where full well matters.
+
+### A methodological note
+
+The first HCG flat run reused the LCG exposures and saturated two of four
+levels. Saturation truncates the distribution, variance collapses, and
+`signal/variance` explodes -- e-/ADU came out as 0.25, 0.26, **1.51**, 1.16 for
+the same gain. The mean of those (0.80, sd 0.55) happens to sit near the LCG
+value, so an unexamined average would have produced a plausible-looking and
+completely wrong answer. Discarding the saturated levels left one point per
+gain; re-running with exposures divided by three restored four clean points and
+confirmed the single-point result to 0.4%.
+
+**Check saturation before trusting a photon-transfer number, and treat a large
+scatter between levels as evidence of a broken measurement rather than noise.**
+
+## LINEARITY AND FULL WELL: THE SENSOR IS LINEAR TO THE ADC CEILING (2026-09-21)
+
+Twenty single frames per mode, exposure stepped evenly past saturation, gain
+100, 0.0 C. A straight line fitted to the points below 40% of full scale, then
+the measured median compared against it.
+
+**Both modes stay linear to within 0.35% all the way up.** There is no
+non-linearity knee before the converter runs out of bits:
+
+```
+LCG   6,397 ADU  -0.22%      HCG   6,454 ADU  -0.14%
+     33,220 ADU  -0.14%           33,979 ADU  -0.08%
+     63,771 ADU  -0.30%           65,252 ADU  -0.35%   <- last unclipped point
+     65,535 ADU  -3.34%           65,535 ADU  -5.59%   <- ADC ceiling, not the pixel
+```
+
+The apparent "deviation" at the top is the ADC pinned at 65535, not the well
+filling up. I expected a real knee and there is none -- the sensor behaves
+better than assumed.
+
+That matters for method, not just for the number: the usual shortcut
+`full well = e-/ADU * 65535` is **valid on this camera**, but now by
+measurement rather than by assumption.
+
+| gain 100 | LCG | HCG |
+|---|---:|---:|
+| e-/ADU | 0.7794 | 0.2531 |
+| read noise | 4.92 e- | **4.10 e-** |
+| full well | **51,078 e-** | 16,587 e- |
+| dynamic range | **80.3 dB** | 72.1 dB |
+| linearity | +-0.30% | +-0.35% |
+
+**51,078 e- matches Sony's ~51,000 e- for the IMX571 at unity gain: the sensor
+is to spec.** The 3.08x ratio between modes is now confirmed by three
+independent routes -- e-/ADU, the exposure needed for equal signal, and full
+well.
+
+### The trade-off, quantified
+
+**17% less read noise costs 8.2 dB of dynamic range.** Eight dB is a factor of
+2.6 in recordable signal, against a gain of 0.8 electrons on the noise floor.
+For most targets that is a bad trade: **use LCG**. HCG earns its place only
+when read noise genuinely dominates -- long subs on faint targets with no
+bright star in the field that would clip at 16,587 e- instead of 51,078.
+
+One detail worth keeping: saturated pixels appear well before the median
+saturates (8,183 of them at an LCG median of 56,166 ADU, still dead on the fit).
+That is the right-hand tail of the distribution touching the ceiling, not the
+average pixel giving out -- which is why a flat should be judged by its
+saturated-pixel count, not by its median alone.
+
+### Final dataset layout
+
+```
+~/camera-analysis/lcg/   253 bias + 48 flat + 20 linearity + report + 42 plots
+~/camera-analysis/hcg/   253 bias + 48 flat + 20 linearity + report + 42 plots
+```
+
+All frames retained and re-analysable; 186 GB free.
+
+## THE "UNREADABLE" CAMERA MODES WERE IN THE PROFILE ALL ALONG (2026-09-21)
+
+Every report and note from this session carried a caveat: `Ultra Mode` and
+`High Fullwell Mode` change conversion gain and full well, `/equipment/camera/action`
+returns 404, therefore their state is unknowable and the measurements are not
+fully reproducible.
+
+**That was wrong.** They are plain profile settings:
+
+```
+GET /v2/api/profile/show?active=true  ->  CameraSettings:
+
+TouptekAlikeUltraMode            True      <- Ultra Mode ON
+TouptekAlikeHighFullwell         False
+TouptekAlikeDewHeaterStrength    4
+TouptekAlikeLEDLights            True
+BinAverageEnabled                False
+```
+
+`ToupTekAlikeCamera.cs:649` reads `LowNoiseMode = profile.TouptekAlikeUltraMode`
+at connect, which is where the driver gets them from in the first place. They
+are also writable the same way every other setting is, through
+`/profile/change-value?settingpath=CameraSettings-TouptekAlikeUltraMode`.
+
+The mistake was concluding from the absence of an `/action` route that the data
+was unreachable, instead of looking for the data. The route question and the
+readability question are not the same question, and I answered the first while
+reporting on the second.
+
+**Consequence for the measurements: all of them were taken with Ultra Mode ON
+and High Fullwell OFF.** The full characterisation is therefore reproducible,
+and the caveat is withdrawn. It also explains part of the result -- Ultra Mode
+is ToupTek's low-noise readout, so the 4.92 e- (LCG) and 4.10 e- (HCG) figures
+are *with it enabled*; with it off they would presumably be worse.
+
+Worth measuring at some point: the same bias sweep with `TouptekAlikeUltraMode`
+set to False, to quantify what that switch is actually worth. It is now a
+one-line profile write away.
+
+`SupportedActions` still cannot be invoked through ninaAPI, and `Fan Speed`
+genuinely has no profile setting (only `GenericCameraFanSpeed`, which the
+ToupTek path ignores) -- but on this camera `MAXFANSPEED = 1`, so there is
+nothing to control.
+
+## CONSOLIDATION, AND A LATENT ANALYSER BUG FOUND WHILE DOING IT (2026-09-21)
+
+The three ad-hoc scripts that produced the best results -- exposure-driven
+flats, the HCG variant, and the linearity ramp -- were folded into
+`camera-analysis.sh` as `--flat-auto` and `--linearity` (961 -> 1511 lines,
+shellcheck clean). `--flat` is kept for a dimmable panel.
+
+`--flat-auto` improves on the ad-hoc originals in one way that matters: it
+**probes for the reference exposure** instead of taking a hardcoded value. The
+hand-calibrated exposures are what saturated two of four HCG levels on the
+first attempt. The probe doubles rather than scaling linearly, because near
+saturation the median stops responding to exposure and a linear extrapolation
+from a clipped frame overshoots badly.
+
+`CALIBRATION.md` (402 lines) is the reuse guide: stage/output table,
+quickstart for both readout modes, every CAMANA_* variable with defaults, the
+operational rules with pointers here, and the 2026-09-21 results as a baseline
+to compare a future run against.
+
+### The bug: four signal levels collapsed into one frameset
+
+`framesets_from_manifest` keyed on `(gain, offset, readout_mode, kind)`, and
+`analyse_flats` reads `paths[0..1]`. A photon-transfer run writes four
+exposure levels at the same gain and offset, so **all four collapsed into one
+frame set and the analyser measured the lowest level, discarding the other
+three without a warning.**
+
+Confirmed on the real manifests: 3 flat framesets where there should be 12,
+each holding 8 paths instead of 2.
+
+Fixed by putting exposure in the key for flats only:
+
+```python
+key = (gain, offset, mode, kind, exposure if kind == "flat" else None)
+```
+
+Bias frames keep the old key -- they are all at the same minimum exposure and
+the pair method wants them pooled. Verified: 3 flat framesets became 12, two
+paths each; bias unchanged at 3.
+
+**The published e-/ADU figures are not affected.** They were computed by a
+standalone script that grouped by `(gain, exposure)` correctly -- which is why
+they carry a 0.3-1.0% scatter across four levels rather than being a single
+number repeated. The bug was latent in the analyser, never in the results.
+
+Worth noting for the method: the bug was invisible from the output. A
+collapsed run still prints a plausible e-/ADU per gain, with no indication
+that three quarters of the data went unread. It surfaced only because the
+consolidation work read the grouping code.
